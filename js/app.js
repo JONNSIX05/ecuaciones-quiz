@@ -153,7 +153,7 @@ function renderMenu() {
     {
       id: 'algebra',
       name: 'Álgebra',
-      desc: 'Leyes de los exponentes, productos notables y fundamentos algebraicos.',
+      desc: 'Exponentes, productos notables, trigonometría, logaritmos, complejos y más.',
       available: true,
     },
     {
