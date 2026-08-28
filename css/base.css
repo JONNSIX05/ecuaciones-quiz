@@ -1,0 +1,166 @@
+/* ============================================================
+   base.css — Reset, variables, tipografía y layout base
+   Estética: "cuaderno de matemáticas" (tinta sobre papel)
+   ============================================================ */
+
+:root {
+  /* Paleta tinta-sobre-papel */
+  --paper: #f4efe4;
+  --paper-deep: #ece5d3;
+  --surface: #fdfaf3;
+  --ink: #21241f;
+  --ink-soft: #4c4f47;
+  --muted: #7a7a70;
+
+  --accent: #1d5c63;          /* teal tinta */
+  --accent-strong: #14474d;
+  --accent-soft: #dbeaeb;
+  --accent-ink: #ffffff;
+
+  --line: #e0d8c4;
+  --line-strong: #cfc5ab;
+
+  --correct: #2e7d32;
+  --correct-bg: #e7f3e8;
+  --wrong: #b52b24;
+  --wrong-bg: #fae7e5;
+  --focus: #b8860b;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  --font-display: "Georgia", "Iowan Old Style", "Palatino Linotype",
+    "Book Antiqua", "Times New Roman", serif;
+  --font-body: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
+
+  --shadow-sm: 0 1px 2px rgba(33, 36, 31, 0.06),
+    0 2px 6px rgba(33, 36, 31, 0.05);
+  --shadow-md: 0 4px 14px rgba(33, 36, 31, 0.08),
+    0 10px 30px rgba(33, 36, 31, 0.06);
+  --shadow-lg: 0 12px 40px rgba(33, 36, 31, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: radial-gradient(
+      rgba(33, 36, 31, 0.028) 1px,
+      transparent 1px
+    );
+  background-size: 22px 22px;
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+
+h2 {
+  font-size: clamp(1.3rem, 3vw, 1.7rem);
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Marco general de la app */
+.app-shell {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  flex: 1;
+}
+
+.site-header {
+  text-align: center;
+  padding: 1.5rem 0 0.5rem;
+}
+
+.site-header .kicker {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+.site-header .tagline {
+  color: var(--muted);
+  margin-top: 0.5rem;
+  font-size: 1rem;
+}
+
+.divider {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--line-strong),
+    transparent
+  );
+  margin: 1.2rem 0 1.6rem;
+}
+
+/* Tarjeta base */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}

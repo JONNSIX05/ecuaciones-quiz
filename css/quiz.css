@@ -1,0 +1,701 @@
+/* ============================================================
+   quiz.css — Estilos de vistas (menú, selección, config, quiz,
+   resultados) y componentes (botones, opciones, feedback)
+   ============================================================ */
+
+/* ---------- Botones ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1.3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.08s ease, background-color 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--accent);
+  border-color: var(--line-strong);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.btn-soft {
+  background-color: var(--paper-deep);
+  color: var(--ink);
+}
+
+.btn-soft:hover:not(:disabled) {
+  background-color: var(--line-strong);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ---------- Vista: menú principal ---------- */
+.section-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .section-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.2rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, box-shadow 0.12s ease,
+    border-color 0.12s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 160px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.section-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--line-strong);
+  text-decoration: none;
+}
+
+.section-card .index {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+}
+
+.section-card h3 {
+  font-size: 1.25rem;
+}
+
+.section-card p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.section-card.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--paper-deep);
+}
+
+.section-card.is-locked:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+  border-color: var(--line);
+}
+
+.badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+
+/* ---------- Vista: lista de leyes ---------- */
+.law-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.law-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.1s ease, border-color 0.12s ease,
+    box-shadow 0.12s ease;
+  color: var(--ink);
+}
+
+.law-row:hover {
+  transform: translateX(3px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+}
+
+.law-row .law-number {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--accent);
+  width: 2rem;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.law-row .law-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.law-row .law-name {
+  font-weight: 600;
+}
+
+.law-row .law-formula {
+  font-size: 1.05rem;
+  margin-top: 0.2rem;
+  color: var(--ink-soft);
+}
+
+.law-row .law-best {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.law-row .law-best strong {
+  display: block;
+  font-size: 1.15rem;
+  color: var(--accent);
+  font-family: var(--font-display);
+}
+
+.law-row.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.law-row.is-locked:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+  border-color: var(--line);
+}
+
+/* ---------- Vista: configuración ---------- */
+.config-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.config-head {
+  text-align: center;
+  margin-bottom: 1.4rem;
+}
+
+.config-head .law-formula-big {
+  font-size: 1.5rem;
+  margin: 0.6rem 0 0.2rem;
+}
+
+.config-head .prereq {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.config-group {
+  margin-bottom: 1.5rem;
+}
+
+.config-group > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+
+/* Selector de modo */
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+@media (min-width: 560px) {
+  .mode-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.mode-option {
+  position: relative;
+}
+
+.mode-option input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.mode-option .mode-label {
+  display: block;
+  text-align: center;
+  padding: 0.6rem 0.4rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background-color 0.12s ease, border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.mode-option .mode-label .sub {
+  display: block;
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.mode-option input:checked + .mode-label {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.mode-option input:checked + .mode-label .sub {
+  color: var(--accent-soft);
+}
+
+.mode-option input:focus-visible + .mode-label {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Sliders personalizados */
+.custom-mix {
+  display: none;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 0.8rem;
+}
+
+.custom-mix.is-visible {
+  display: flex;
+}
+
+.mix-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 2.2rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mix-row .mix-label {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.mix-row output {
+  font-family: var(--font-mono);
+  text-align: right;
+  font-weight: 600;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 1.6rem;
+}
+
+.mix-total {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.mix-total.is-error {
+  color: var(--wrong);
+  font-weight: 600;
+}
+
+/* ---------- Vista: quiz ---------- */
+.quiz-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.quiz-topbar .meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.progress-track {
+  height: 8px;
+  background: var(--paper-deep);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+  border: 1px solid var(--line);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.question-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.6rem 1.4rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.question-prompt {
+  font-size: 1.1rem;
+  margin-bottom: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.question-latex {
+  font-size: 1.6rem;
+  text-align: center;
+  margin: 0.8rem 0 1.4rem;
+  min-height: 2.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  font-size: 1.05rem;
+  transition: border-color 0.12s ease, background-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.option-btn .key {
+  flex-shrink: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  background: var(--paper);
+}
+
+.option-btn .option-latex {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+}
+
+.option-btn:disabled {
+  cursor: default;
+}
+
+.option-btn.is-correct {
+  border-color: var(--correct);
+  background-color: var(--correct-bg);
+}
+
+.option-btn.is-correct .key {
+  border-color: var(--correct);
+  color: var(--correct);
+  background: #fff;
+}
+
+.option-btn.is-wrong {
+  border-color: var(--wrong);
+  background-color: var(--wrong-bg);
+}
+
+.option-btn.is-wrong .key {
+  border-color: var(--wrong);
+  color: var(--wrong);
+  background: #fff;
+}
+
+/* Feedback / explicación */
+.feedback {
+  margin-top: 1.2rem;
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  animation: feedback-in 0.25s ease;
+}
+
+.feedback.correct {
+  background: var(--correct-bg);
+  border-color: var(--correct);
+}
+
+.feedback.wrong {
+  background: var(--wrong-bg);
+  border-color: var(--wrong);
+}
+
+.feedback .feedback-title {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.feedback.correct .feedback-title {
+  color: var(--correct);
+}
+
+.feedback.wrong .feedback-title {
+  color: var(--wrong);
+}
+
+.feedback .feedback-body {
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+@keyframes feedback-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quiz-actions {
+  margin-top: 1.3rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- Vista: resultados ---------- */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.result-score {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 1;
+  margin: 0.8rem 0 0.2rem;
+}
+
+.result-score .total {
+  font-size: 1.6rem;
+  color: var(--muted);
+}
+
+.result-message {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  margin-bottom: 1.2rem;
+}
+
+.result-meter {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--paper-deep);
+  overflow: hidden;
+  margin: 0 auto 1.6rem;
+  max-width: 340px;
+  border: 1px solid var(--line);
+}
+
+.result-meter .meter-fill {
+  height: 100%;
+  background: var(--correct);
+  transition: width 0.5s ease;
+}
+
+.result-meter.is-mid .meter-fill {
+  background: var(--focus);
+}
+
+.result-meter.is-low .meter-fill {
+  background: var(--wrong);
+}
+
+.review-list {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 1.2rem 0;
+}
+
+.review-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.review-item .review-icon {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.review-item.pass .review-icon {
+  color: var(--correct);
+}
+
+.review-item.fail .review-icon {
+  color: var(--wrong);
+}
+
+.review-item .review-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-item .review-prompt {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.review-item .review-latex {
+  font-size: 1.05rem;
+  margin-top: 0.2rem;
+}
+
+.review-item .review-answer {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 1.2rem;
+}
+
+/* ---------- Navegación / back ---------- */
+.back-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.back-link {
+  font-size: 0.9rem;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.section-title-row .count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Utilidades ---------- */
+.text-center {
+  text-align: center;
+}
+
+.mt-1 {
+  margin-top: 0.5rem;
+}
+
+.mt-2 {
+  margin-top: 1rem;
+}
+
+.mt-3 {
+  margin-top: 1.5rem;
+}

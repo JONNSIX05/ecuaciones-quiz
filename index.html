@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz de Ecuaciones Diferenciales</title>
+  <meta name="description" content="Quiz interactivo de opción múltiple para repasar conceptos base de Ecuaciones Diferenciales: Álgebra, Cálculo Diferencial y Cálculo Integral.">
+  <meta name="theme-color" content="#1d5c63">
+
+  <!-- KaTeX self-hosted -->
+  <link rel="stylesheet" href="./vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/quiz.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="kicker">Ecuaciones Diferenciales</p>
+      <h1>Quiz de Matemáticas</h1>
+      <p class="tagline">Repasa los conceptos base con preguntas de opción múltiple.</p>
+    </header>
+
+    <div class="divider"></div>
+
+    <main id="view" aria-live="polite"></main>
+  </div>
+
+  <!-- KaTeX self-hosted (global `katex`) -->
+  <script defer src="./vendor/katex/katex.min.js"></script>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
