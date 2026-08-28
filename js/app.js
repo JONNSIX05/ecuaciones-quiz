@@ -10,11 +10,11 @@ import {
   availableByDifficulty,
 } from './quiz-engine.js';
 import {
-  getAllLaws,
-  getLaw,
   sectionName,
-  topicName,
-} from '../data/algebra/exponentes/index.js';
+  getAllSubtemas,
+  getSubtema,
+  getLaw,
+} from '../data/algebra/index.js';
 
 const view = document.getElementById('view');
 
@@ -91,28 +91,46 @@ function route() {
     return;
   }
 
-  if (seg[0] === 'algebra') {
-    if (seg.length === 1) {
-      renderLawList();
-      return;
-    }
-    const law = getLaw(seg[1]);
-    if (!law) {
-      renderNotFound();
-      return;
-    }
-    if (seg.length === 2) {
-      renderConfig(law);
-      return;
-    }
-    if (seg[2] === 'play') {
-      renderQuiz(law);
-      return;
-    }
-    if (seg[2] === 'result') {
-      renderResult(law);
-      return;
-    }
+  if (seg[0] !== 'algebra') {
+    renderNotFound();
+    return;
+  }
+
+  // seg = ['algebra', subId?, lawId?, action?]
+  if (seg.length === 1) {
+    renderSubtemaList();
+    return;
+  }
+
+  const sub = getSubtema(seg[1]);
+  if (!sub) {
+    renderNotFound();
+    return;
+  }
+
+  if (seg.length === 2) {
+    renderLawList(sub);
+    return;
+  }
+
+  const law = getLaw(seg[1], seg[2]);
+  if (!law) {
+    renderNotFound();
+    return;
+  }
+
+  if (seg.length === 3) {
+    renderConfig(law, sub);
+    return;
+  }
+
+  if (seg[3] === 'play') {
+    renderQuiz(law, sub);
+    return;
+  }
+  if (seg[3] === 'result') {
+    renderResult(law, sub);
+    return;
   }
 
   renderNotFound();
@@ -179,11 +197,53 @@ function renderMenu() {
 }
 
 /* -------------------------------------------------------------
-   Vista: lista de leyes
+   Vista: lista de subtemas
    ------------------------------------------------------------- */
-function renderLawList() {
-  const laws = getAllLaws();
-  const rows = laws
+function subtemaBest(sub) {
+  let best = null;
+  for (const law of sub.laws) {
+    const r = getResult(law.lawId);
+    if (r && r.total > 0) {
+      const pct = r.score / r.total;
+      if (best === null || pct > best) best = pct;
+    }
+  }
+  return best;
+}
+
+function renderSubtemaList() {
+  const subs = getAllSubtemas();
+  const cards = subs
+    .map((sub, i) => {
+      const best = subtemaBest(sub);
+      const bestHtml =
+        best !== null
+          ? `<span class="badge">Mejor: ${Math.round(best * 100)}%</span>`
+          : `<span class="badge">Sin intentos</span>`;
+      return `
+        <a class="section-card" href="#/algebra/${sub.id}">
+          <span class="index">${String(i + 1).padStart(2, '0')}</span>
+          <h3>${escapeHtml(sub.name)}</h3>
+          <p>${sub.laws.length} leyes · 15 preguntas por ley</p>
+          ${bestHtml}
+        </a>`;
+    })
+    .join('');
+
+  view.innerHTML = `
+    <div class="back-row"><a class="back-link" href="#/">← Volver al menú</a></div>
+    <div class="section-title-row">
+      <h2>${escapeHtml(sectionName)}</h2>
+      <span class="count">${subs.length} ${subs.length === 1 ? 'subtema' : 'subtemas'}</span>
+    </div>
+    <div class="section-grid">${cards}</div>`;
+}
+
+/* -------------------------------------------------------------
+   Vista: lista de leyes de un subtema
+   ------------------------------------------------------------- */
+function renderLawList(sub) {
+  const rows = sub.laws
     .map((law, i) => {
       const number = String(i + 1).padStart(2, '0');
       const best = getResult(law.lawId);
@@ -193,7 +253,7 @@ function renderLawList() {
 
       if (law.available) {
         return `
-          <a class="law-row" href="#/algebra/${law.lawId}">
+          <a class="law-row" href="#/algebra/${sub.id}/${law.lawId}">
             <span class="law-number">${number}</span>
             <span class="law-info">
               <span class="law-name">${escapeHtml(law.lawName)}</span>
@@ -215,10 +275,10 @@ function renderLawList() {
     .join('');
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/">← Volver al menú</a></div>
+    <div class="back-row"><a class="back-link" href="#/algebra">← Volver a los subtemas</a></div>
     <div class="section-title-row">
-      <h2>${escapeHtml(sectionName)} — ${escapeHtml(topicName)}</h2>
-      <span class="count">${laws.length} leyes</span>
+      <h2>${escapeHtml(sectionName)} — ${escapeHtml(sub.name)}</h2>
+      <span class="count">${sub.laws.length} leyes</span>
     </div>
     <div class="law-list">${rows}</div>`;
 
@@ -235,7 +295,7 @@ const DIFF_LABELS = {
   hard: 'Solo difícil',
 };
 
-function renderConfig(law) {
+function renderConfig(law, sub) {
   if (!law.available) {
     renderNotFound();
     return;
@@ -244,7 +304,7 @@ function renderConfig(law) {
   const avail = availableByDifficulty(law);
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/algebra">← Volver a las leyes</a></div>
+    <div class="back-row"><a class="back-link" href="#/algebra/${sub.id}">← Volver a las leyes</a></div>
     <div class="config-card">
       <div class="config-head">
         <h2>${escapeHtml(law.lawName)}</h2>
@@ -373,6 +433,7 @@ function renderConfig(law) {
 
     session = {
       law,
+      sub,
       questions,
       distribution,
       index: 0,
@@ -381,7 +442,7 @@ function renderConfig(law) {
       answered: false,
       difficultyLabel: label,
     };
-    window.location.hash = `#/algebra/${law.lawId}/play`;
+    window.location.hash = `#/algebra/${sub.id}/${law.lawId}/play`;
   });
 }
 
@@ -420,9 +481,9 @@ function clampInt(n) {
 /* -------------------------------------------------------------
    Vista: quiz (juego)
    ------------------------------------------------------------- */
-function renderQuiz(law) {
+function renderQuiz(law, sub) {
   if (!session || session.law.lawId !== law.lawId) {
-    window.location.hash = `#/algebra/${law.lawId}`;
+    window.location.hash = `#/algebra/${sub.id}/${law.lawId}`;
     return;
   }
 
@@ -447,7 +508,7 @@ function renderQuiz(law) {
 
   view.innerHTML = `
     <div class="quiz-topbar">
-      <a class="back-link" href="#/algebra/${law.lawId}">← Salir</a>
+      <a class="back-link" href="#/algebra/${sub.id}/${law.lawId}">← Salir</a>
       <span class="meta">Pregunta ${idx} de ${total} · Aciertos: ${session.score}</span>
     </div>
     <div class="progress-track">
@@ -510,10 +571,10 @@ function renderQuiz(law) {
   nextBtn.addEventListener('click', () => {
     if (session.index + 1 >= total) {
       session.finished = true;
-      window.location.hash = `#/algebra/${law.lawId}/result`;
+      window.location.hash = `#/algebra/${sub.id}/${law.lawId}/result`;
     } else {
       session.index += 1;
-      renderQuiz(law);
+      renderQuiz(law, sub);
     }
   });
 }
@@ -521,9 +582,9 @@ function renderQuiz(law) {
 /* -------------------------------------------------------------
    Vista: resultados
    ------------------------------------------------------------- */
-function renderResult(law) {
+function renderResult(law, sub) {
   if (!session || !session.finished || session.law.lawId !== law.lawId) {
-    window.location.hash = `#/algebra/${law.lawId}`;
+    window.location.hash = `#/algebra/${sub.id}/${law.lawId}`;
     return;
   }
 
@@ -554,7 +615,7 @@ function renderResult(law) {
     .join('');
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/algebra">← Volver a las leyes</a></div>
+    <div class="back-row"><a class="back-link" href="#/algebra/${sub.id}">← Volver a las leyes</a></div>
     <div class="result-card">
       <p class="kicker" style="font-family: var(--font-mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); font-size: 0.75rem;">${escapeHtml(law.lawName)}</p>
       <div class="result-score">${score}<span class="total"> / ${total}</span></div>
@@ -565,7 +626,7 @@ function renderResult(law) {
       <div class="review-list">${reviewItems}</div>
       <div class="result-actions">
         <button id="retry-btn" class="btn btn-primary" type="button">Reintentar</button>
-        <a class="btn btn-soft" href="#/algebra/${law.lawId}">Otra dificultad</a>
+        <a class="btn btn-soft" href="#/algebra/${sub.id}/${law.lawId}">Otra dificultad</a>
         <a class="btn btn-ghost" href="#/">Menú</a>
       </div>
     </div>`;
@@ -582,6 +643,7 @@ function renderResult(law) {
     if (!questions.length) return;
     session = {
       law,
+      sub,
       questions,
       distribution,
       index: 0,
@@ -590,7 +652,7 @@ function renderResult(law) {
       answered: false,
       difficultyLabel: session.difficultyLabel,
     };
-    window.location.hash = `#/algebra/${law.lawId}/play`;
+    window.location.hash = `#/algebra/${sub.id}/${law.lawId}/play`;
   });
 }
 
