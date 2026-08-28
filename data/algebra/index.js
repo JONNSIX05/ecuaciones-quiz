@@ -3,11 +3,12 @@
 
 import exponentes from './exponentes/index.js';
 import productosNotables from './productos-notables/index.js';
+import trigonometria from './trigonometria/index.js';
 
 export const sectionId = 'algebra';
 export const sectionName = 'Álgebra';
 
-export const subtemas = [exponentes, productosNotables];
+export const subtemas = [exponentes, productosNotables, trigonometria];
 
 /**
  * Devuelve todos los subtemas de Álgebra.
