@@ -144,6 +144,16 @@ Abrir `http://localhost:8080` en el navegador.
 - [ ] Accesibilidad básica: foco visible, teclado funciona, contraste AA.
 - [ ] Abrir `index.html` funciona offline (DevTools → Offline).
 
+## Git / Commits
+
+- Subir los cambios **después de verificar** (regresión en navegador).
+- Mensajes de commit **simples y descriptivos**, en español, sin acentos:
+  - `se agrego subtema productos notables`
+  - `se agrego subtema trigonometria`
+  - `se agrega ley factor comun`
+- Un commit por subtema (o por ley si se agregan de una en una).
+- No incluir archivos temporales ni capturas en el repo (ver `.gitignore`).
+
 ## Hosting
 
 ### GitHub Pages
