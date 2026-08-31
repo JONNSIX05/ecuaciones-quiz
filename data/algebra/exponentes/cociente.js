@@ -154,7 +154,7 @@ export default {
         { latex: '11', correct: false }
       ],
       explanation:
-        '$\frac{2^x}{2^3} = 2^{x-3}$. Como $16 = 2^4$, entonces $x-3 = 4$, luego $x = 7$.'
+        '$\\frac{2^x}{2^3} = 2^{x-3}$. Como $16 = 2^4$, entonces $x-3 = 4$, luego $x = 7$.'
     },
     {
       id: 'coc-h-02',
@@ -167,7 +167,7 @@ export default {
         { latex: '81', correct: false }
       ],
       explanation:
-        '$\frac{3^5}{3^2} = 3^{5-2} = 3^3 = 27$.'
+        '$\\frac{3^5}{3^2} = 3^{5-2} = 3^3 = 27$.'
     },
     {
       id: 'coc-h-03',

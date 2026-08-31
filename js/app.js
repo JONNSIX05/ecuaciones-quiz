@@ -9,12 +9,9 @@ import {
   meterLevel,
   availableByDifficulty,
 } from './quiz-engine.js';
-import {
-  sectionName,
-  getAllSubtemas,
-  getSubtema,
-  getLaw,
-} from '../data/algebra/index.js';
+import { sections, getSection } from './sections.js';
+import { openModal, closeActiveModal, isModalOpen } from './modal.js';
+import { formulario } from '../data/calculo-diferencial/formulario.js';
 
 const view = document.getElementById('view');
 
@@ -91,45 +88,46 @@ function route() {
     return;
   }
 
-  if (seg[0] !== 'algebra') {
+  const section = getSection(seg[0]);
+  if (!section || !section.available || !section.module) {
     renderNotFound();
     return;
   }
 
-  // seg = ['algebra', subId?, lawId?, action?]
+  // seg = [sectionId, subId?, lawId?, action?]
   if (seg.length === 1) {
-    renderSubtemaList();
+    renderSubtemaList(section);
     return;
   }
 
-  const sub = getSubtema(seg[1]);
+  const sub = section.module.getSubtema(seg[1]);
   if (!sub) {
     renderNotFound();
     return;
   }
 
   if (seg.length === 2) {
-    renderLawList(sub);
+    renderLawList(section, sub);
     return;
   }
 
-  const law = getLaw(seg[1], seg[2]);
+  const law = section.module.getLaw(seg[1], seg[2]);
   if (!law) {
     renderNotFound();
     return;
   }
 
   if (seg.length === 3) {
-    renderConfig(law, sub);
+    renderConfig(section, law, sub);
     return;
   }
 
   if (seg[3] === 'play') {
-    renderQuiz(law, sub);
+    renderQuiz(section, law, sub);
     return;
   }
   if (seg[3] === 'result') {
-    renderResult(law, sub);
+    renderResult(section, law, sub);
     return;
   }
 
@@ -149,41 +147,19 @@ function renderNotFound() {
    Vista: menú principal
    ------------------------------------------------------------- */
 function renderMenu() {
-  const sections = [
-    {
-      id: 'algebra',
-      name: 'Álgebra',
-      desc: 'Exponentes, productos notables, trigonometría, logaritmos, complejos y más.',
-      available: true,
-    },
-    {
-      id: 'calculo-diferencial',
-      name: 'Cálculo Diferencial',
-      desc: 'Derivadas, reglas de derivación y aplicaciones.',
-      available: false,
-    },
-    {
-      id: 'calculo-integral',
-      name: 'Cálculo Integral',
-      desc: 'Integrales y métodos de integración.',
-      available: false,
-    },
-  ];
-
   const cards = sections
     .map((s) => {
-      const index = s.id === 'algebra' ? '01' : s.id === 'calculo-diferencial' ? '02' : '03';
       if (s.available) {
         return `
           <a class="section-card" href="#/${s.id}">
-            <span class="index">${index}</span>
+            <span class="index">${s.index}</span>
             <h3>${escapeHtml(s.name)}</h3>
             <p>${escapeHtml(s.desc)}</p>
           </a>`;
       }
       return `
         <div class="section-card is-locked" aria-disabled="true">
-          <span class="index">${index}</span>
+          <span class="index">${s.index}</span>
           <h3>${escapeHtml(s.name)}</h3>
           <p>${escapeHtml(s.desc)}</p>
           <span class="badge">Próximamente</span>
@@ -211,8 +187,8 @@ function subtemaBest(sub) {
   return best;
 }
 
-function renderSubtemaList() {
-  const subs = getAllSubtemas();
+function renderSubtemaList(section) {
+  const subs = section.module.getAllSubtemas();
   const cards = subs
     .map((sub, i) => {
       const best = subtemaBest(sub);
@@ -221,7 +197,7 @@ function renderSubtemaList() {
           ? `<span class="badge">Mejor: ${Math.round(best * 100)}%</span>`
           : `<span class="badge">Sin intentos</span>`;
       return `
-        <a class="section-card" href="#/algebra/${sub.id}">
+        <a class="section-card" href="#/${section.id}/${sub.id}">
           <span class="index">${String(i + 1).padStart(2, '0')}</span>
           <h3>${escapeHtml(sub.name)}</h3>
           <p>${sub.laws.length} leyes · 15 preguntas por ley</p>
@@ -233,7 +209,7 @@ function renderSubtemaList() {
   view.innerHTML = `
     <div class="back-row"><a class="back-link" href="#/">← Volver al menú</a></div>
     <div class="section-title-row">
-      <h2>${escapeHtml(sectionName)}</h2>
+      <h2>${escapeHtml(section.module.sectionName)}</h2>
       <span class="count">${subs.length} ${subs.length === 1 ? 'subtema' : 'subtemas'}</span>
     </div>
     <div class="section-grid">${cards}</div>`;
@@ -242,7 +218,7 @@ function renderSubtemaList() {
 /* -------------------------------------------------------------
    Vista: lista de leyes de un subtema
    ------------------------------------------------------------- */
-function renderLawList(sub) {
+function renderLawList(section, sub) {
   const rows = sub.laws
     .map((law, i) => {
       const number = String(i + 1).padStart(2, '0');
@@ -253,7 +229,7 @@ function renderLawList(sub) {
 
       if (law.available) {
         return `
-          <a class="law-row" href="#/algebra/${sub.id}/${law.lawId}">
+          <a class="law-row" href="#/${section.id}/${sub.id}/${law.lawId}">
             <span class="law-number">${number}</span>
             <span class="law-info">
               <span class="law-name">${escapeHtml(law.lawName)}</span>
@@ -275,9 +251,9 @@ function renderLawList(sub) {
     .join('');
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/algebra">← Volver a los subtemas</a></div>
+    <div class="back-row"><a class="back-link" href="#/${section.id}">← Volver a los subtemas</a></div>
     <div class="section-title-row">
-      <h2>${escapeHtml(sectionName)} — ${escapeHtml(sub.name)}</h2>
+      <h2>${escapeHtml(section.module.sectionName)} — ${escapeHtml(sub.name)}</h2>
       <span class="count">${sub.laws.length} leyes</span>
     </div>
     <div class="law-list">${rows}</div>`;
@@ -295,16 +271,17 @@ const DIFF_LABELS = {
   hard: 'Solo difícil',
 };
 
-function renderConfig(law, sub) {
+function renderConfig(section, law, sub) {
   if (!law.available) {
     renderNotFound();
     return;
   }
   const total = law.questions.length;
   const avail = availableByDifficulty(law);
+  const hintsAvailable = section.id === 'calculo-diferencial';
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/algebra/${sub.id}">← Volver a las leyes</a></div>
+    <div class="back-row"><a class="back-link" href="#/${section.id}/${sub.id}">← Volver a las leyes</a></div>
     <div class="config-card">
       <div class="config-head">
         <h2>${escapeHtml(law.lawName)}</h2>
@@ -330,6 +307,21 @@ function renderConfig(law, sub) {
           ${modeOption('custom', 'Personalizado', 'elige la mezcla')}
         </div>
       </div>
+
+      ${
+        hintsAvailable
+          ? `
+      <div class="config-group">
+        <label class="checkbox-row">
+          <input type="checkbox" id="hints-toggle" checked>
+          <span>
+            Permitir consultar el formulario durante el quiz
+            <small>Útil para practicar. Desactívalo para modo examen.</small>
+          </span>
+        </label>
+      </div>`
+          : ''
+      }
 
       <div class="custom-mix" id="custom-mix">
         ${mixSlider('easy', 'Fáciles', avail.easy)}
@@ -431,7 +423,10 @@ function renderConfig(law, sub) {
     const questions = selectQuestions(law, distribution);
     if (!questions.length) return;
 
+    const hintsToggle = view.querySelector('#hints-toggle');
+
     session = {
+      section,
       law,
       sub,
       questions,
@@ -441,8 +436,9 @@ function renderConfig(law, sub) {
       answers: [],
       answered: false,
       difficultyLabel: label,
+      withHints: hintsToggle ? hintsToggle.checked : false,
     };
-    window.location.hash = `#/algebra/${sub.id}/${law.lawId}/play`;
+    window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}/play`;
   });
 }
 
@@ -479,11 +475,47 @@ function clampInt(n) {
 }
 
 /* -------------------------------------------------------------
+   Formulario (pista) — solo Cálculo Diferencial
+   ------------------------------------------------------------- */
+function buildFormularioHtml() {
+  return `
+    <p class="modal-intro">${escapeHtml(formulario.intro)}</p>
+    ${formulario.sections
+      .map(
+        (group) => `
+      <section class="formula-group">
+        <h3>${escapeHtml(group.title)}</h3>
+        <ul class="formula-list">
+          ${group.items
+            .map(
+              (item) => `
+            <li class="formula-row">
+              <span class="formula-id">${escapeHtml(item.id)}</span>
+              <span class="formula-math" data-latex="${escapeAttr(item.formula)}"></span>
+              <span class="formula-desc">${escapeHtml(item.desc)}</span>
+            </li>`
+            )
+            .join('')}
+        </ul>
+      </section>`
+      )
+      .join('')}`;
+}
+
+function openFormularioModal() {
+  const modal = openModal({
+    title: formulario.title,
+    contentHTML: buildFormularioHtml(),
+  });
+  hydrate(modal.root);
+}
+
+/* -------------------------------------------------------------
    Vista: quiz (juego)
    ------------------------------------------------------------- */
-function renderQuiz(law, sub) {
+function renderQuiz(section, law, sub) {
   if (!session || session.law.lawId !== law.lawId) {
-    window.location.hash = `#/algebra/${sub.id}/${law.lawId}`;
+    window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}`;
     return;
   }
 
@@ -491,6 +523,9 @@ function renderQuiz(law, sub) {
   const q = session.questions[session.index];
   const idx = session.index + 1;
   session.answered = false;
+
+  const showHints =
+    Boolean(session.withHints) && section.id === 'calculo-diferencial';
 
   const optionsHtml = q.options
     .map((opt, i) => {
@@ -508,7 +543,8 @@ function renderQuiz(law, sub) {
 
   view.innerHTML = `
     <div class="quiz-topbar">
-      <a class="back-link" href="#/algebra/${sub.id}/${law.lawId}">← Salir</a>
+      <a class="back-link" href="#/${section.id}/${sub.id}/${law.lawId}">← Salir</a>
+      ${showHints ? '<button id="hints-btn" class="btn btn-soft btn-small" type="button">Formulario</button>' : ''}
       <span class="meta">Pregunta ${idx} de ${total} · Aciertos: ${session.score}</span>
     </div>
     <div class="progress-track">
@@ -525,6 +561,10 @@ function renderQuiz(law, sub) {
 
   view.querySelector('#prompt').innerHTML = renderMixed(q.prompt);
   hydrate(view);
+
+  if (showHints) {
+    view.querySelector('#hints-btn').addEventListener('click', openFormularioModal);
+  }
 
   const buttons = view.querySelectorAll('.option-btn');
   const nextBtn = view.querySelector('#next-btn');
@@ -571,10 +611,10 @@ function renderQuiz(law, sub) {
   nextBtn.addEventListener('click', () => {
     if (session.index + 1 >= total) {
       session.finished = true;
-      window.location.hash = `#/algebra/${sub.id}/${law.lawId}/result`;
+      window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}/result`;
     } else {
       session.index += 1;
-      renderQuiz(law, sub);
+      renderQuiz(section, law, sub);
     }
   });
 }
@@ -582,9 +622,9 @@ function renderQuiz(law, sub) {
 /* -------------------------------------------------------------
    Vista: resultados
    ------------------------------------------------------------- */
-function renderResult(law, sub) {
+function renderResult(section, law, sub) {
   if (!session || !session.finished || session.law.lawId !== law.lawId) {
-    window.location.hash = `#/algebra/${sub.id}/${law.lawId}`;
+    window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}`;
     return;
   }
 
@@ -615,7 +655,7 @@ function renderResult(law, sub) {
     .join('');
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/algebra/${sub.id}">← Volver a las leyes</a></div>
+    <div class="back-row"><a class="back-link" href="#/${section.id}/${sub.id}">← Volver a las leyes</a></div>
     <div class="result-card">
       <p class="kicker" style="font-family: var(--font-mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); font-size: 0.75rem;">${escapeHtml(law.lawName)}</p>
       <div class="result-score">${score}<span class="total"> / ${total}</span></div>
@@ -626,7 +666,7 @@ function renderResult(law, sub) {
       <div class="review-list">${reviewItems}</div>
       <div class="result-actions">
         <button id="retry-btn" class="btn btn-primary" type="button">Reintentar</button>
-        <a class="btn btn-soft" href="#/algebra/${sub.id}/${law.lawId}">Otra dificultad</a>
+        <a class="btn btn-soft" href="#/${section.id}/${sub.id}/${law.lawId}">Otra dificultad</a>
         <a class="btn btn-ghost" href="#/">Menú</a>
       </div>
     </div>`;
@@ -642,6 +682,7 @@ function renderResult(law, sub) {
     const questions = selectQuestions(law, distribution);
     if (!questions.length) return;
     session = {
+      section,
       law,
       sub,
       questions,
@@ -651,17 +692,30 @@ function renderResult(law, sub) {
       answers: [],
       answered: false,
       difficultyLabel: session.difficultyLabel,
+      withHints: session.withHints,
     };
-    window.location.hash = `#/algebra/${sub.id}/${law.lawId}/play`;
+    window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}/play`;
   });
 }
 
 /* -------------------------------------------------------------
-   Atajos de teclado (1-4 para elegir opción)
+   Atajos de teclado (1-4 para elegir opción, p para formulario)
    ------------------------------------------------------------- */
 document.addEventListener('keydown', (e) => {
-  if (!session || session.finished || session.answered) return;
   if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+  if (e.key === 'p' || e.key === 'P') {
+    if (isModalOpen()) {
+      closeActiveModal();
+      return;
+    }
+    const hintsBtn = view.querySelector('#hints-btn');
+    if (hintsBtn) hintsBtn.click();
+    return;
+  }
+
+  if (isModalOpen()) return;
+  if (!session || session.finished || session.answered) return;
   const num = parseInt(e.key, 10);
   if (num >= 1 && num <= 4) {
     const btn = view.querySelector(`.option-btn[data-key="${num}"]`);

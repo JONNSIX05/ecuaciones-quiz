@@ -126,7 +126,7 @@ export default {
         { latex: 'x^{-2}', correct: false }
       ],
       explanation:
-        '$\frac{1}{x^{-2}} = x^2$, porque un exponente negativo en el denominador sube al numerador.'
+        '$\\frac{1}{x^{-2}} = x^2$, porque un exponente negativo en el denominador sube al numerador.'
     },
     {
       id: 'expneg-m-05',
@@ -180,7 +180,7 @@ export default {
         { latex: '\\frac{1}{3}', correct: false }
       ],
       explanation:
-        '$\frac{1}{8} = \\frac{1}{2^3} = 2^{-3}$, por lo que $x = -3$.'
+        '$\\frac{1}{8} = \\frac{1}{2^3} = 2^{-3}$, por lo que $x = -3$.'
     },
     {
       id: 'expneg-h-04',

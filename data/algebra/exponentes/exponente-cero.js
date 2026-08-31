@@ -193,7 +193,7 @@ export default {
         { latex: '25', correct: false }
       ],
       explanation:
-        '$\frac{5^3}{5^3} = 5^{3-3} = 5^0 = 1$. Todo número dividido entre sí mismo es 1.'
+        '$\\frac{5^3}{5^3} = 5^{3-3} = 5^0 = 1$. Todo número dividido entre sí mismo es 1.'
     },
     {
       id: 'exp0-h-05',
