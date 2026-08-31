@@ -12,6 +12,7 @@ import {
 import { sections, getSection } from './sections.js';
 import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
+import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
 
 const view = document.getElementById('view');
 
@@ -107,6 +108,10 @@ function route() {
   }
 
   if (seg.length === 2) {
+    if (sub.studyContent) {
+      renderStudySection(section, sub);
+      return;
+    }
     renderLawList(section, sub);
     return;
   }
@@ -200,7 +205,7 @@ function renderSubtemaList(section) {
         <a class="section-card" href="#/${section.id}/${sub.id}">
           <span class="index">${String(i + 1).padStart(2, '0')}</span>
           <h3>${escapeHtml(sub.name)}</h3>
-          <p>${sub.laws.length} leyes · 15 preguntas por ley</p>
+          <p>${sub.laws.length} ${sub.laws.length === 1 ? 'ley' : 'leyes'} · ${sub.laws.reduce((n, l) => n + l.questions.length, 0)} preguntas</p>
           ${bestHtml}
         </a>`;
     })
@@ -262,6 +267,63 @@ function renderLawList(section, sub) {
 }
 
 /* -------------------------------------------------------------
+   Vista: pantalla de estudio (previo al quiz)
+   ------------------------------------------------------------- */
+function renderStudySection(section, sub) {
+  const study = sub.studyContent;
+  const form = getSectionFormulario(section);
+  const groupsHtml = study.groups
+    .map((group) => {
+      let items = [];
+      if (Array.isArray(group.items)) {
+        items = group.items;
+      } else if (group.sectionIndex !== undefined) {
+        const data = form.sections[group.sectionIndex];
+        items = data ? data.items : [];
+      }
+      if (!items.length) return '';
+      const itemsHtml = items
+        .map(
+          (item) => `
+            <li class="formula-row">
+              <span class="formula-id">${escapeHtml(item.id)}</span>
+              <span class="formula-math" data-latex="${escapeAttr(item.formula)}"></span>
+              <span class="formula-desc">${escapeHtml(item.desc)}</span>
+            </li>`
+        )
+        .join('');
+      return `
+        <section class="formula-group">
+          <h3>${escapeHtml(group.title)}</h3>
+          <ul class="formula-list">${itemsHtml}</ul>
+        </section>`;
+    })
+    .join('');
+
+  const law = sub.laws[0];
+
+  view.innerHTML = `
+    <div class="back-row"><a class="back-link" href="#/${section.id}">← Volver a ${escapeHtml(section.module.sectionName)}</a></div>
+    <div class="study-section">
+      <header class="study-head">
+        <h2>${escapeHtml(sub.name)}</h2>
+        <p class="study-prereq">${escapeHtml(law.prerequisites)}</p>
+        <p class="study-intro">${escapeHtml(study.intro)}</p>
+      </header>
+
+      <div class="study-formulario">${groupsHtml}</div>
+
+      <div class="study-cta">
+        <a class="btn btn-primary" href="#/${section.id}/${sub.id}/${law.lawId}">
+          ${escapeHtml(study.ctaLabel)}
+        </a>
+      </div>
+    </div>`;
+
+  hydrate(view);
+}
+
+/* -------------------------------------------------------------
    Vista: configuración
    ------------------------------------------------------------- */
 const DIFF_LABELS = {
@@ -278,10 +340,10 @@ function renderConfig(section, law, sub) {
   }
   const total = law.questions.length;
   const avail = availableByDifficulty(law);
-  const hintsAvailable = section.id === 'calculo-diferencial';
+  const hintsAvailable = isHintsSection(section);
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/${section.id}/${sub.id}">← Volver a las leyes</a></div>
+    <div class="back-row"><a class="back-link" href="#/${section.id}/${sub.id}">← ${sub.studyContent ? 'Volver al estudio' : 'Volver a las leyes'}</a></div>
     <div class="config-card">
       <div class="config-head">
         <h2>${escapeHtml(law.lawName)}</h2>
@@ -475,12 +537,20 @@ function clampInt(n) {
 }
 
 /* -------------------------------------------------------------
-   Formulario (pista) — solo Cálculo Diferencial
+   Formulario (pista) — Cálculo Diferencial e Integral
    ------------------------------------------------------------- */
-function buildFormularioHtml() {
+function getSectionFormulario(section) {
+  return section.id === 'calculo-integral' ? formularioIntegral : formulario;
+}
+
+function isHintsSection(section) {
+  return section.id === 'calculo-diferencial' || section.id === 'calculo-integral';
+}
+
+function buildFormularioHtml(form) {
   return `
-    <p class="modal-intro">${escapeHtml(formulario.intro)}</p>
-    ${formulario.sections
+    <p class="modal-intro">${escapeHtml(form.intro)}</p>
+    ${form.sections
       .map(
         (group) => `
       <section class="formula-group">
@@ -502,10 +572,11 @@ function buildFormularioHtml() {
       .join('')}`;
 }
 
-function openFormularioModal() {
+function openFormularioModal(section) {
+  const form = getSectionFormulario(section);
   const modal = openModal({
-    title: formulario.title,
-    contentHTML: buildFormularioHtml(),
+    title: form.title,
+    contentHTML: buildFormularioHtml(form),
   });
   hydrate(modal.root);
 }
@@ -525,7 +596,7 @@ function renderQuiz(section, law, sub) {
   session.answered = false;
 
   const showHints =
-    Boolean(session.withHints) && section.id === 'calculo-diferencial';
+    Boolean(session.withHints) && isHintsSection(section);
 
   const optionsHtml = q.options
     .map((opt, i) => {
@@ -563,7 +634,7 @@ function renderQuiz(section, law, sub) {
   hydrate(view);
 
   if (showHints) {
-    view.querySelector('#hints-btn').addEventListener('click', openFormularioModal);
+    view.querySelector('#hints-btn').addEventListener('click', () => openFormularioModal(section));
   }
 
   const buttons = view.querySelectorAll('.option-btn');
@@ -655,7 +726,7 @@ function renderResult(section, law, sub) {
     .join('');
 
   view.innerHTML = `
-    <div class="back-row"><a class="back-link" href="#/${section.id}/${sub.id}">← Volver a las leyes</a></div>
+    <div class="back-row"><a class="back-link" href="#/${section.id}/${sub.id}">← ${sub.studyContent ? 'Volver al estudio' : 'Volver a las leyes'}</a></div>
     <div class="result-card">
       <p class="kicker" style="font-family: var(--font-mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); font-size: 0.75rem;">${escapeHtml(law.lawName)}</p>
       <div class="result-score">${score}<span class="total"> / ${total}</span></div>

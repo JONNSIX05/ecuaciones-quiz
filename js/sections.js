@@ -4,6 +4,7 @@
 
 import * as algebra from '../data/algebra/index.js';
 import * as calculoDiferencial from '../data/calculo-diferencial/index.js';
+import * as calculoIntegral from '../data/calculo-integral/index.js';
 
 export const sections = [
   {
@@ -18,7 +19,7 @@ export const sections = [
     id: 'calculo-diferencial',
     index: '02',
     name: 'Cálculo Diferencial',
-    desc: 'Límites, reglas de derivación, funciones trascendentes y regla de la cadena.',
+    desc: 'Límites y reglas de derivación (formulario I–XXVI).',
     module: calculoDiferencial,
     available: true,
   },
@@ -26,9 +27,9 @@ export const sections = [
     id: 'calculo-integral',
     index: '03',
     name: 'Cálculo Integral',
-    desc: 'Integrales y métodos de integración.',
-    module: null,
-    available: false,
+    desc: 'Integrales inmediatas, por partes, fracciones parciales y sustitución trigonométrica.',
+    module: calculoIntegral,
+    available: true,
   },
 ];
 

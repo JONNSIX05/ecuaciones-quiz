@@ -2,14 +2,12 @@
 // Registro central de subtemas de la sección Cálculo Diferencial.
 
 import limites from './limites/index.js';
-import derivacionBasica from './derivacion-basica/index.js';
-import trascendentes from './trascendentes/index.js';
-import reglaCadena from './regla-cadena/index.js';
+import derivacion from './derivacion/index.js';
 
 export const sectionId = 'calculo-diferencial';
 export const sectionName = 'Cálculo Diferencial';
 
-export const subtemas = [limites, derivacionBasica, trascendentes, reglaCadena];
+export const subtemas = [limites, derivacion];
 
 /**
  * Devuelve todos los subtemas de Cálculo Diferencial.

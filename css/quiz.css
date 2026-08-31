@@ -728,6 +728,49 @@ input[type="range"] {
   font-weight: 400;
 }
 
+/* ---------- Pantalla de estudio (previo al quiz) ---------- */
+.study-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.4rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.study-head {
+  text-align: center;
+  margin-bottom: 1.4rem;
+}
+
+.study-head h2 {
+  font-size: 1.5rem;
+}
+
+.study-prereq {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
+}
+
+.study-intro {
+  color: var(--ink-soft);
+  font-size: 1rem;
+  margin-top: 0.6rem;
+}
+
+.study-formulario {
+  margin-bottom: 1.6rem;
+}
+
+.study-cta {
+  display: flex;
+  justify-content: center;
+}
+
+.study-cta .btn {
+  min-width: 220px;
+}
+
 /* ---------- Modal (formulario / pista) ---------- */
 body.modal-open {
   overflow: hidden;
