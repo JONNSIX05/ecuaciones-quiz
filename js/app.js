@@ -11,6 +11,7 @@ import {
 } from './quiz-engine.js';
 import { sections, getSection } from './sections.js';
 import { openModal, closeActiveModal, isModalOpen } from './modal.js';
+import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
 
@@ -97,6 +98,10 @@ function route() {
 
   // seg = [sectionId, subId?, lawId?, action?]
   if (seg.length === 1) {
+    if (section.id === 'practica-libre') {
+      renderPracticaLibre(view);
+      return;
+    }
     renderSubtemaList(section);
     return;
   }

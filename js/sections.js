@@ -5,6 +5,7 @@
 import * as algebra from '../data/algebra/index.js';
 import * as calculoDiferencial from '../data/calculo-diferencial/index.js';
 import * as calculoIntegral from '../data/calculo-integral/index.js';
+import * as practicaLibre from '../data/practica-libre/index.js';
 
 export const sections = [
   {
@@ -29,6 +30,14 @@ export const sections = [
     name: 'Cálculo Integral',
     desc: 'Integrales inmediatas, por partes, fracciones parciales y sustitución trigonométrica.',
     module: calculoIntegral,
+    available: true,
+  },
+  {
+    id: 'practica-libre',
+    index: '04',
+    name: 'Práctica libre',
+    desc: 'Escribe tu propia expresión y descubre qué método aplicar.',
+    module: practicaLibre,
     available: true,
   },
 ];
