@@ -11,3 +11,5 @@ desktop.ini
 # Agente
 AGENTS.md
 PLAN.md
+.agents/
+skills-lock.json

@@ -1,7 +1,7 @@
 // app.js — Router por hash + bootstrap + render de vistas (SPA).
 
 import { isReady, render, sanitize } from './latex.js';
-import { saveResult, getResult } from './storage.js';
+import { getResult } from './storage.js';
 import {
   selectQuestions,
   balancedSplit,
@@ -14,6 +14,10 @@ import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
+import { getSupabase, isSupabaseReady } from './supabase.js';
+import { getSession, signIn, signUp, signOut, isAdmin } from './auth.js';
+import { saveAttempt } from './results.js';
+import { renderAdminDashboard } from './admin.js';
 
 const view = document.getElementById('view');
 
@@ -84,6 +88,12 @@ function route() {
     .replace(/^#\/?/, '')
     .split('/')
     .filter(Boolean);
+
+  // Ruta oculta del profesor
+  if (seg[0] === 'admin') {
+    renderAdminDashboard(view);
+    return;
+  }
 
   if (seg.length === 0) {
     renderMenu();
@@ -177,9 +187,25 @@ function renderMenu() {
     })
     .join('');
 
+  const adminBtn = (window.__isAdmin === true)
+    ? `<a class="btn btn-soft btn-small" href="#/admin">Dashboard</a>`
+    : '';
+  const userBar = (window.__currentEmail)
+    ? `<div class="user-bar"><span class="user-email">${escapeHtml(window.__currentEmail)}</span>${adminBtn}<button id="logout-btn" class="btn btn-soft btn-small" type="button">Cerrar sesión</button></div>`
+    : '';
+
   view.innerHTML = `
+    ${userBar}
     <h2 class="visually-hidden">Secciones</h2>
     <div class="section-grid">${cards}</div>`;
+
+  view.querySelector('#logout-btn')?.addEventListener('click', async () => {
+    await signOut();
+    window.__isAdmin = false;
+    window.__currentEmail = null;
+    window.location.hash = '#/';
+    window.location.reload();
+  });
 }
 
 /* -------------------------------------------------------------
@@ -708,11 +734,16 @@ function renderResult(section, law, sub) {
   const total = session.questions.length;
   const level = meterLevel(score, total);
 
-  saveResult(law.lawId, {
+  // Persistencia en Supabase (con fallback a localStorage) — fire-and-forget.
+  saveAttempt({
+    sectionId: section.id,
+    subtemaId: sub.id,
+    lawId: law.lawId,
+    lawName: law.lawName,
     score,
     total,
     difficulty: session.difficultyLabel,
-  });
+  }).catch(() => {});
 
   const reviewItems = answers
     .map((a) => {
@@ -800,21 +831,112 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* -------------------------------------------------------------
+   Vista: autenticación (login / registro)
+   ------------------------------------------------------------- */
+function renderAuth() {
+  view.innerHTML = `
+    <div class="auth-card">
+      <h1 class="auth-title">Quiz de Matemáticas</h1>
+      <p class="auth-sub">Inicia sesión para acceder al contenido</p>
+      <div class="auth-tabs">
+        <button id="auth-tab-login" class="auth-tab is-active" type="button">Iniciar sesión</button>
+        <button id="auth-tab-register" class="auth-tab" type="button">Registrarse</button>
+      </div>
+      <form id="auth-form" class="auth-form" autocomplete="on" novalidate>
+        <label class="auth-field">
+          <span>Correo</span>
+          <input type="email" id="auth-email" required autocomplete="email">
+        </label>
+        <label class="auth-field">
+          <span>Contraseña</span>
+          <input type="password" id="auth-password" required minlength="6" autocomplete="current-password">
+        </label>
+        <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Entrar</button>
+        <div id="auth-msg" class="auth-msg" role="status"></div>
+      </form>
+      <p class="auth-foot">Sin acceso offline. Si la red de tu escuela bloquea Supabase, contacta al profesor.</p>
+    </div>`;
+
+  const tabLogin = view.querySelector('#auth-tab-login');
+  const tabRegister = view.querySelector('#auth-tab-register');
+  const submitBtn = view.querySelector('#auth-submit');
+  const msgEl = view.querySelector('#auth-msg');
+
+  function setMode(mode) {
+    tabLogin.classList.toggle('is-active', mode === 'login');
+    tabRegister.classList.toggle('is-active', mode === 'register');
+    submitBtn.textContent = mode === 'login' ? 'Entrar' : 'Crear cuenta';
+    msgEl.textContent = '';
+    msgEl.className = 'auth-msg';
+  }
+  tabLogin.addEventListener('click', () => setMode('login'));
+  tabRegister.addEventListener('click', () => setMode('register'));
+
+  view.querySelector('#auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = view.querySelector('#auth-email').value.trim();
+    const password = view.querySelector('#auth-password').value;
+    const mode = tabRegister.classList.contains('is-active') ? 'register' : 'login';
+    if (!email || !password) {
+      msgEl.textContent = 'Completa correo y contraseña.';
+      msgEl.className = 'auth-msg auth-err';
+      return;
+    }
+    submitBtn.disabled = true;
+    msgEl.textContent = mode === 'login' ? 'Iniciando sesión…' : 'Creando cuenta…';
+    msgEl.className = 'auth-msg';
+    try {
+      const fn = mode === 'login' ? signIn : signUp;
+      const { error } = await fn(email, password);
+      if (error) {
+        msgEl.textContent = error.message || 'Error de autenticación.';
+        msgEl.className = 'auth-msg auth-err';
+      } else {
+        msgEl.textContent = mode === 'login'
+          ? 'Sesión iniciada. Redirigiendo…'
+          : 'Cuenta creada. Revisa tu correo si Confirm email está activo.';
+        msgEl.className = 'auth-msg auth-ok';
+        window.location.hash = '#/';
+        window.location.reload();
+      }
+    } catch (err) {
+      msgEl.textContent = err.message || 'Error desconocido.';
+      msgEl.className = 'auth-msg auth-err';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+/* -------------------------------------------------------------
    Bootstrap
    ------------------------------------------------------------- */
-function boot() {
+async function boot() {
   window.addEventListener('hashchange', route);
-  if (isReady()) {
-    route();
+  if (!isReady()) {
+    let tries = 0;
+    await new Promise((resolve) => {
+      const timer = setInterval(() => {
+        if (isReady() || ++tries > 50) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
+  if (isSupabaseReady()) {
+    const session = await getSession();
+    if (session) {
+      window.__currentEmail = session.user?.email || '';
+      window.__isAdmin = await isAdmin();
+      route();
+      return;
+    }
+    renderAuth();
     return;
   }
-  let tries = 0;
-  const timer = setInterval(() => {
-    if (isReady() || ++tries > 50) {
-      clearInterval(timer);
-      route();
-    }
-  }, 50);
+  route();
 }
 
 boot();

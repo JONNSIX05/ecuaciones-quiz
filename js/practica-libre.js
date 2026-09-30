@@ -5,8 +5,8 @@
 
 import { render, isReady, sanitize } from './latex.js';
 import { rules } from '../data/practica-libre/rules.js';
-
-const STORAGE_KEY = 'eqd:practice';
+import { cheatsheet } from '../data/practica-libre/latex-cheatsheet.js';
+import { savePracticeAttempt } from './practice-results.js';
 
 let currentScore = 0;
 
@@ -15,6 +15,10 @@ function escapeHtml(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function shuffle(arr) {
@@ -61,13 +65,7 @@ export function analyzeExpression(latex) {
 }
 
 function saveAttempt(record) {
-  try {
-    const list = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]');
-    list.push(record);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch (_) {
-    // ignorar
-  }
+  savePracticeAttempt(record).catch(() => {});
 }
 
 /**
@@ -85,6 +83,8 @@ export function renderPracticaLibre(view) {
         <div class="practica-preview" id="pl-preview"></div>
         <button id="pl-start" class="btn btn-primary btn-block" type="button">Detectar método</button>
       </section>
+
+      <aside class="card practica-cheatsheet" id="pl-cheatsheet"></aside>
 
       <section class="card practica-quiz-card" id="pl-quiz" hidden>
         <div class="practica-score">Puntos: <span id="pl-score">${currentScore}</span></div>
@@ -104,6 +104,7 @@ export function renderPracticaLibre(view) {
   const preview = view.querySelector('#pl-preview');
   const startBtn = view.querySelector('#pl-start');
   const quizCard = view.querySelector('#pl-quiz');
+  const cheatsheetEl = view.querySelector('#pl-cheatsheet');
   const topicEl = view.querySelector('#pl-topic');
   const exprEl = view.querySelector('#pl-expr');
   const optionsEl = view.querySelector('#pl-options');
@@ -114,6 +115,8 @@ export function renderPracticaLibre(view) {
   const resetBtn = view.querySelector('#pl-reset');
 
   let answered = false;
+
+  renderCheatsheet(cheatsheetEl, input);
 
   input.addEventListener('input', () => {
     render(input.value || '\\text{Esperando expresión...}', preview, { displayMode: true });
@@ -140,12 +143,14 @@ export function renderPracticaLibre(view) {
 
     renderOptions(found);
     view.querySelector('.practica-input-card').hidden = true;
+    cheatsheetEl.hidden = true;
     quizCard.hidden = false;
   });
 
   resetBtn.addEventListener('click', () => {
     quizCard.hidden = true;
     view.querySelector('.practica-input-card').hidden = false;
+    cheatsheetEl.hidden = false;
     input.value = '';
     render('\\text{Esperando expresión...}', preview, { displayMode: true });
   });
@@ -197,4 +202,57 @@ export function renderPracticaLibre(view) {
       optionsEl.appendChild(btn);
     });
   }
+}
+
+/**
+ * Renderiza el diccionario LaTeX dentro del aside.
+ * @param {HTMLElement} container
+ * @param {HTMLTextAreaElement} inputEl
+ */
+function renderCheatsheet(container, inputEl) {
+  container.innerHTML = cheatsheet
+    .map(
+      (cat) => `
+        <section class="practica-cheatsheet-section">
+          <h3>${escapeHtml(cat.title)}</h3>
+          <div class="practica-cheatsheet-grid">
+            ${cat.items
+              .map(
+                (item) => `
+                  <button type="button" class="practica-cheatsheet-item"
+                          data-latex="${escapeAttr(item.example)}"
+                          title="${escapeHtml(item.desc)}">
+                    <span class="ch-latex"></span>
+                    <small>${escapeHtml(item.desc)}</small>
+                  </button>`
+              )
+              .join('')}
+          </div>
+        </section>`
+    )
+    .join('');
+
+  container.querySelectorAll('.practica-cheatsheet-item').forEach((btn) => {
+    const latex = btn.getAttribute('data-latex');
+    const span = btn.querySelector('.ch-latex');
+    render(latex, span, { displayMode: false });
+    btn.addEventListener('click', () => {
+      insertAtCursor(inputEl, latex);
+    });
+  });
+}
+
+/**
+ * Inserta `text` en la posición actual del cursor del textarea y refresca el preview.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {string} text
+ */
+function insertAtCursor(textarea, text) {
+  textarea.focus();
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+  const caret = start + text.length;
+  textarea.setSelectionRange(caret, caret);
+  textarea.dispatchEvent(new Event('input'));
 }
