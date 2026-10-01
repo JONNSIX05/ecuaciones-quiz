@@ -4,6 +4,7 @@
 
 import { getSupabase } from './supabase.js';
 import { isAdmin, getUser, signOut } from './auth.js';
+import { renderAdminQuestions } from './admin-questions.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -83,7 +84,10 @@ where email = 'TU_EMAIL';</pre>
           <h2>Dashboard del profesor</h2>
           <p class="admin-sub">Sesión iniciada como ${escapeHtml(user?.email ?? '')}</p>
         </div>
-        <button id="admin-logout" class="btn btn-soft btn-small" type="button">Cerrar sesión</button>
+        <div class="d-flex" style="display:flex;gap:.5rem;align-items:center;">
+          <button id="admin-questions-btn" class="btn btn-soft btn-small" type="button">Gestionar preguntas</button>
+          <button id="admin-logout" class="btn btn-soft btn-small" type="button">Cerrar sesión</button>
+        </div>
       </header>
       <div id="admin-body"><p class="admin-loading">Cargando datos…</p></div>
     </section>`;
@@ -91,6 +95,9 @@ where email = 'TU_EMAIL';</pre>
     await signOut();
     window.location.hash = '#/';
     window.location.reload();
+  });
+  view.querySelector('#admin-questions-btn')?.addEventListener('click', () => {
+    renderAdminQuestions(view);
   });
 
   try {

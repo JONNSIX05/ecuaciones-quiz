@@ -1219,6 +1219,73 @@ input[type="range"] {
   color: var(--wrong);
 }
 
+/* ---------- Quiz loading ---------- */
+.quiz-loading-card {
+  padding: 2.5rem 1.5rem;
+}
+
+.quiz-loading {
+  text-align: center;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ---------- Admin: tabs / preview / upload ---------- */
+.admin-tab-bar {
+  display: flex;
+  gap: 0.4rem;
+  background: var(--paper);
+  padding: 0.3rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  margin-bottom: 1rem;
+  width: fit-content;
+}
+
+.admin-tab {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.admin-tab.is-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.preview-list {
+  margin: 0.6rem 0;
+  padding-left: 1.5rem;
+}
+
+.preview-list > li {
+  margin: 0.4rem 0;
+}
+
+.preview-prompt {
+  font-weight: 600;
+}
+
+.preview-opts {
+  list-style: none;
+  padding-left: 1.2rem;
+  margin: 0.2rem 0;
+}
+
+.preview-opts > li {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.preview-opts > li.preview-correct {
+  color: var(--correct);
+  font-weight: 600;
+}
+
 /* ---------- Modal (formulario / pista) ---------- */
 body.modal-open {
   overflow: hidden;

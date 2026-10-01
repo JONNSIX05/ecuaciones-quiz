@@ -18,6 +18,7 @@ import { getSupabase, isSupabaseReady } from './supabase.js';
 import { getSession, signIn, signUp, signOut, isAdmin } from './auth.js';
 import { saveAttempt } from './results.js';
 import { renderAdminDashboard } from './admin.js';
+import { getLaw as getLawRemote } from './questions.js';
 
 const view = document.getElementById('view');
 
@@ -138,12 +139,26 @@ function route() {
   }
 
   if (seg.length === 3) {
-    renderConfig(section, law, sub);
+    showQuizLoader(section, sub, law);
+    getLawRemote({ sectionId: section.id, subtemaId: sub.id, lawId: law.lawId })
+      .then((remoteLaw) => {
+        if (!remoteLaw.questions.length) {
+          renderNoQuestions(section, sub, law);
+          return;
+        }
+        renderConfig(section, { ...law, questions: remoteLaw.questions }, sub);
+      })
+      .catch(() => renderQuizLoadError(section, sub, law));
     return;
   }
 
   if (seg[3] === 'play') {
-    renderQuiz(section, law, sub);
+    showQuizLoader(section, sub, law);
+    getLawRemote({ sectionId: section.id, subtemaId: sub.id, lawId: law.lawId })
+      .then((remoteLaw) => {
+        renderQuiz(section, { ...law, questions: remoteLaw.questions }, sub);
+      })
+      .catch(() => renderQuizLoadError(section, sub, law));
     return;
   }
   if (seg[3] === 'result') {
@@ -161,6 +176,33 @@ function renderNotFound() {
       <p class="mt-1">La ruta no existe.</p>
       <a class="btn btn-primary mt-2" href="#/">Volver al menú</a>
     </div>`;
+}
+
+function showQuizLoader(section, sub, law) {
+  view.innerHTML = `
+    <div class="card text-center quiz-loading-card">
+      <p class="quiz-loading">Cargando preguntas…</p>
+    </div>`;
+}
+
+function renderNoQuestions(section, sub, law) {
+  view.innerHTML = `
+    <div class="card text-center">
+      <h2>Sin preguntas</h2>
+      <p>No se encontraron preguntas en el servidor. Contacta al profesor.</p>
+      <a class="btn btn-primary mt-2" href="#/${section.id}">← Volver</a>
+    </div>`;
+}
+
+function renderQuizLoadError(section, sub, law) {
+  view.innerHTML = `
+    <div class="card text-center">
+      <h2>No se pudieron cargar las preguntas</h2>
+      <p>Revisa tu conexión a internet e inténtalo de nuevo.</p>
+      <button class="btn btn-primary mt-2" id="quiz-retry">Reintentar</button>
+      <a class="btn btn-soft mt-2 ml-2" href="#/${section.id}">← Volver</a>
+    </div>`;
+  view.querySelector('#quiz-retry')?.addEventListener('click', () => route());
 }
 
 /* -------------------------------------------------------------
