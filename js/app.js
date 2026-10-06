@@ -926,15 +926,19 @@ function showTermsModal() {
     continueBtn.disabled = !accept.checked;
   });
 
-  continueBtn.addEventListener('click', async () => {
-    const user = await getUser();
-    if (user) {
-      try {
-        const version = await getCurrentTermsVersion();
-        await acceptTerms(user.id, version);
-      } catch (_) { /* no bloquear por ansiedad de espera */ }
-    }
+  continueBtn.addEventListener('click', () => {
+    // Mostrar el formulario inmediatamente (mejor UX) y registrar la
+    // aceptación en background si ya hay sesión.
     showAuthForm();
+    (async () => {
+      const user = await getUser();
+      if (user) {
+        try {
+          const version = await getCurrentTermsVersion();
+          await acceptTerms(user.id, version);
+        } catch (_) { /* no bloquear por ansiedad de espera */ }
+      }
+    })();
   });
 }
 
