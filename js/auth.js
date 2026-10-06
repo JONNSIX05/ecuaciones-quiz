@@ -148,7 +148,7 @@ export async function isAdmin() {
   if (!sb) return false;
   const user = await getUser();
   if (!user) return false;
-  const { data } = await sb
+  const { data, error } = await sb
     .from('profiles')
     .select('is_admin')
     .eq('user_id', user.id)
