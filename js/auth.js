@@ -20,10 +20,11 @@ export async function getSession() {
  * @returns {Promise<object|null>}
  */
 export async function getUser() {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb.auth.getUser();
-  return data.user ?? null;
+  // No llamar a sb.auth.getUser() — ese endpoint cuelga cuando no hay sesión
+  // y bloquea la UI. En su lugar leemos la sesión local (instantáneo).
+  // Si necesitamos un usuario fresco (post-signIn), usamos getSession().user.
+  const session = await getSession();
+  return session?.user ?? null;
 }
 
 /**
@@ -145,9 +146,7 @@ export async function signOut() {
 export async function isAdmin() {
   const sb = getSupabase();
   if (!sb) return false;
-  // getSession es local y no cuelga; getUser hace fetch al endpoint de auth.
-  const session = await getSession();
-  const user = session?.user ?? (await getUser());
+  const user = await getUser();
   if (!user) return false;
   const { data } = await sb
     .from('profiles')
@@ -164,9 +163,7 @@ export async function isAdmin() {
 export async function hasAcceptedCurrentTerms() {
   const sb = getSupabase();
   if (!sb) return false;
-  // getSession es local y no cuelga; getUser hace fetch al endpoint de auth.
-  const session = await getSession();
-  const user = session?.user ?? (await getUser());
+  const user = await getUser();
   if (!user) return false;
   const current = await getCurrentTermsVersion();
   const last = await getLatestTermsAcceptance(user.id);

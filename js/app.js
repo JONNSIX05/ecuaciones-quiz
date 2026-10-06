@@ -927,20 +927,7 @@ function showTermsModal() {
   });
 
   continueBtn.addEventListener('click', async () => {
-    // getSession es local (instantáneo); getUser va a la red y puede colgar si no hay sesión.
-    const session = await getSession();
-    let user = session?.user;
-    if (!user) {
-      try {
-        // Timeout defensivo por si getUser nunca resuelve.
-        user = await Promise.race([
-          getUser(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 2000)),
-        ]);
-      } catch (_) {
-        user = null;
-      }
-    }
+    const user = await getUser();
     if (user) {
       try {
         const version = await getCurrentTermsVersion();
