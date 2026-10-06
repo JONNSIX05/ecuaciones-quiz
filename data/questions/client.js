@@ -23,8 +23,6 @@ function shape(row) {
 
 /**
  * Devuelve las preguntas de una ley desde Supabase (con cache).
- * @param {{sectionId:string,subtemaId:string,lawId:string}} ref
- * @returns {Promise<object[]>}
  */
 export async function getQuestions(ref) {
   const k = key(ref.sectionId, ref.subtemaId, ref.lawId);
@@ -59,7 +57,7 @@ export async function getQuestions(ref) {
 }
 
 /**
- * Devuelve un objeto ley con `questions[]` (mismo shape que el anterior).
+ * Devuelve un objeto ley con `questions[]`.
  */
 export async function getLaw(ref) {
   const list = await getQuestions(ref);
@@ -74,7 +72,7 @@ export function invalidateCache() {
   cache.clear();
 }
 
-/** Inserta un array de preguntas. Usado por el admin (upload JSON). */
+/** Inserta un array de preguntas. */
 export async function insertQuestions(rows) {
   const sb = getSupabase();
   if (!sb) throw new Error('SUPABASE_NOT_READY');
@@ -101,15 +99,30 @@ export async function deleteQuestion(id) {
   invalidateCache();
 }
 
-/** Lista preguntas por sección/subtema/ley. Para el admin. */
-export async function listQuestions(filter = {}) {
+/**
+ * Lista paginada con búsqueda en el campo `prompt`.
+ * @param {{from:number, to:number, section_id?:string, subtema_id?:string, law_id?:string, difficulty?:string, search?:string}} filter
+ * @returns {Promise<{rows:object[], count:number, from:number}>}
+ */
+export async function listQuestionsRange(filter = {}) {
   const sb = getSupabase();
   if (!sb) throw new Error('SUPABASE_NOT_READY');
-  let q = sb.from('questions').select('id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation').order('id');
-  if (filter.sectionId) q = q.eq('section_id', filter.sectionId);
-  if (filter.subtemaId) q = q.eq('subtema_id', filter.subtemaId);
-  if (filter.lawId) q = q.eq('law_id', filter.lawId);
-  const { data, error } = await q;
+  let q = sb.from('questions')
+    .select('id, section_id, subtema_id, law_id, difficulty, prompt', { count: 'exact' })
+    .order('id');
+  if (filter.section_id) q = q.eq('section_id', filter.section_id);
+  if (filter.subtema_id) q = q.eq('subtema_id', filter.subtema_id);
+  if (filter.law_id) q = q.eq('law_id', filter.law_id);
+  if (filter.difficulty) q = q.eq('difficulty', filter.difficulty);
+  if (filter.search) q = q.ilike('prompt', '%s', filter.search);
+  if (Number.isFinite(filter.from) && Number.isFinite(filter.to)) {
+    q = q.range(filter.from, filter.to);
+  }
+  const { data, error, count } = await q;
   if (error) throw error;
-  return data ?? [];
+  return {
+    rows: data ?? [],
+    count: count ?? 0,
+    from: filter.from ?? 0,
+  };
 }

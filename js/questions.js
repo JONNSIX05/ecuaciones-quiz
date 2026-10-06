@@ -9,4 +9,5 @@ export {
   updateQuestion,
   deleteQuestion,
   listQuestions,
+  listQuestionsRange,
 } from '../data/questions/client.js';

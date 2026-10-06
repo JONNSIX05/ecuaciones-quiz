@@ -1,11 +1,11 @@
 // js/admin-questions.js
-// Sub-vista CRUD de preguntas para el admin: explorar + editar + eliminar + subir JSON.
+// Sub-vista CRUD de preguntas para el admin: explorar (paginado + filtros + búsqueda) +
+// editar + eliminar + subir JSON + ver detalle expandible.
 
 import { isAdmin } from './auth.js';
 import { getSupabase } from './supabase.js';
-import { listQuestions, updateQuestion, deleteQuestion, insertQuestions } from './questions.js';
+import { listQuestions, updateQuestion, deleteQuestion, insertQuestions, listQuestionsRange } from './questions.js';
 import { validateQuestionJSON } from '../data/questions/upload-schema.js';
-import { render, sanitize } from './latex.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -17,12 +17,21 @@ function escapeHtml(str) {
 }
 
 function escapeAttr(str) {
-  return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return escapeHtml(str).replace(/"/g, '&quot;');
 }
 
-function getSupabaseClient() {
-  return getSupabase();
-}
+// Estado interno (módulo)
+const state = {
+  page: 1,
+  pageSize: 25,
+  filters: {
+    section_id: '',
+    subtema_id: '',
+    law_id: '',
+    difficulty: '',
+    search: '',
+  },
+};
 
 /**
  * Renderiza la sub-vista CRUD dentro de `view`.
@@ -61,65 +70,237 @@ export async function renderAdminQuestions(view) {
   showBrowse();
 }
 
+// ============ Browse (paginado + filtros + búsqueda + detalle expandible) ============
+
 async function showBrowse() {
   const body = document.querySelector('#admin-questions-body');
-  body.innerHTML = `<p class="admin-loading">Cargando preguntas…</p>`;
-  try {
-    const rows = await listQuestions();
-    if (!rows.length) {
-      body.innerHTML = `<p class="admin-empty">No hay preguntas en el catálogo.</p>`;
-      return;
-    }
-    body.innerHTML = `
-      <p class="admin-hint">${rows.length} preguntas en total. Click en una fila para editar.</p>
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Sección</th>
-              <th>Subtema</th>
-              <th>Ley</th>
-              <th>Dificultad</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map((r) => `
-              <tr data-id="${escapeAttr(r.id)}">
-                <td><code>${escapeHtml(r.id)}</code></td>
-                <td>${escapeHtml(r.section_id)}</td>
-                <td>${escapeHtml(r.subtema_id)}</td>
-                <td>${escapeHtml(r.law_id)}</td>
-                <td>${escapeHtml(r.difficulty)}</td>
-                <td>
-                  <button data-action="edit" data-id="${escapeAttr(r.id)}" class="btn btn-soft btn-small">Editar</button>
-                  <button data-action="delete" data-id="${escapeAttr(r.id)}" class="btn btn-soft btn-small" style="color:var(--wrong);">Eliminar</button>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>`;
+  body.innerHTML = renderFilters() + `<div id="questions-result"><p class="admin-loading">Cargando preguntas…</p></div>`;
+  bindFilters();
 
-    body.querySelectorAll('button[data-action]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const action = btn.dataset.action;
-        const row = rows.find((r) => r.id === id);
-        if (action === 'edit') openEditor(body, row);
-        if (action === 'delete') {
-          if (!confirm(`¿Eliminar la pregunta ${id}?`)) return;
-          try { await deleteQuestion(id); showBrowse(); } catch (e) { alert(e.message); }
-        }
-      });
+  await loadQuestions();
+}
+
+function renderFilters() {
+  const f = state.filters;
+  const opts = (sel, cur) => `<option value="${sel}"${sel===cur?' selected':''}>${sel || '—'}</option>`;
+  return `
+    <div class="questions-filters">
+      <select id="f-section" title="Sección">
+          ${['<option value="">Todas</option>','algebra','calculo-diferencial','calculo-integral','practica-libre'].map(s => opts(s, f.section_id)).join('')}
+        </select>
+      <select id="f-subtema" title="Subtema">
+          <option value="">Todos</option>
+        </select>
+      <select id="f-law" title="Ley">
+          <option value="">Todas</option>
+        </select>
+      <select id="f-diff" title="Dificultad">
+          ${['','easy','medium','hard'].map(d => opts(d, f.difficulty)).join('')}
+        </select>
+      <input id="f-search" type="search" placeholder="Buscar en prompt…" value="${escapeAttr(f.search)}">
+      <button id="f-reset" class="btn btn-soft btn-small" type="button">Limpiar</button>
+    </div>
+  `;
+}
+
+function bindFilters() {
+  const ids = ['f-section', 'f-subtema', 'f-law', 'f-diff', 'f-search'];
+  for (const id of ids) {
+    document.getElementById(id)?.addEventListener('input', () => {
+      state.page = 1;
+      if (id === 'f-section') {
+        state.filters.section_id = document.getElementById(id).value;
+        populateSubtema();
+      } else if (id === 'f-subtema') {
+        state.filters.subtema_id = document.getElementById(id).value;
+        populateLaw();
+      } else if (id === 'f-law') {
+        state.filters.law_id = document.getElementById(id).value;
+      } else if (id === 'f-diff') {
+        state.filters.difficulty = document.getElementById(id).value;
+      } else if (id === 'f-search') {
+        state.filters.search = document.getElementById(id).value;
+      }
+      loadQuestions();
     });
+  }
+  document.getElementById('f-reset')?.addEventListener('click', () => {
+    state.filters = { section_id: '', subtema_id: '', law_id: '', difficulty: '', search: '' };
+    state.page = 1;
+    showBrowse();
+  });
+}
+
+// Listas de opciones (config simples)
+const SECTION_SUBTEMA = {
+  'algebra': ['exponentes', 'logaritmos', 'trigonometria', 'productos-notables', 'complejos', 'cuadratica', 'division-polinomios'],
+  'calculo-diferencial': ['derivacion'],
+  'calculo-integral': ['inmediatas', 'partes', 'fracciones-parciales', 'sustitucion-trigonometrica'],
+  'practica-libre': [],
+};
+
+function populateSubtema() {
+  const sub = document.getElementById('f-subtema');
+  const law = document.getElementById('f-law');
+  if (!sub || !law) return;
+  const subs = SECTION_SUBTEMA[state.filters.section_id] || [];
+  sub.innerHTML = '<option value="">Todos</option>' + subs.map(s => `<option value="${s}"${s===state.filters.subtema_id?' selected':''}>${s}</option>`).join('');
+  state.filters.subtema_id = '';
+  populateLaw();
+}
+
+function populateLaw() {
+  const law = document.getElementById('f-law');
+  if (!law) return;
+  // Las leyes las inferimos del prefix del id de pregunta o dejamos vacío.
+  law.innerHTML = '<option value="">Todas</option>' +
+    ['exponentes','logaritmos','derivacion','inmediatas','partes','fracciones-parciales','sustitucion-trigonometrica'].map(l =>
+      `<option value="${l}"${l===state.filters.law_id?' selected':''}>${l}</option>`
+    ).join('');
+  state.filters.law_id = '';
+}
+
+async function loadQuestions() {
+  const target = document.getElementById('questions-result');
+  if (!target) return;
+  target.innerHTML = `<p class="admin-loading">Cargando preguntas…</p>`;
+  try {
+    const from = (state.page - 1) * state.pageSize;
+    const to = from + state.pageSize - 1;
+    const res = await listQuestionsRange({
+      from, to,
+      section_id: state.filters.section_id || null,
+      subtema_id: state.filters.subtema_id || null,
+      law_id: state.filters.law_id || null,
+      difficulty: state.filters.difficulty || null,
+      search: state.filters.search || null,
+    });
+    target.innerHTML = renderQuestions(res.renderBody);
+    bindPagination();
+    bindRowEvents();
   } catch (e) {
-    body.innerHTML = `<div class="alert-warn"><strong>Error:</strong> ${escapeHtml(e.message)}</div>`;
+    target.innerHTML = `<div class="alert-warn"><strong>Error:</strong> ${escapeHtml(e.message)}</div>`;
   }
 }
 
-function openEditor(body, row) {
+function renderQuestions({ rows, count }) {
+  if (count === 0) {
+    return '<p class="admin-empty">No hay preguntas (con esos filtros).</p>';
+  }
+  const safeRows = rows.map(r => {
+    return `<tr data-id="${escapeAttr(r.id)}">
+      <td><code>${escapeHtml(r.id)}</code></td>
+      <td>${escapeHtml(r.section_id || '')}</td>
+      <td>${escapeHtml(r.subtema_id || '')}</td>
+      <td>${escapeHtml(r.law_id || '')}</td>
+      <td>${escapeHtml(r.difficulty || '')}</td>
+      <td>
+        <button data-action="expand" data-id="${escapeAttr(r.id)}" class="btn btn-soft btn-small">Ver</button>
+        <button data-action="edit" data-id="${escapeAttr(r.id)}" class="btn btn-soft btn-small">Editar</button>
+        <button data-action="delete" data-id="${escapeAttr(r.id)}" class="btn btn-soft btn-small" style="color:var(--wrong);">Eliminar</button>
+      </td>
+    </tr>
+    <tr class="questions-detail-row" data-detail-id="${escapeAttr(r.id)}">
+      <td colspan="6">
+        <div class="questions-detail-content" data-id="${escapeAttr(r.id)}">
+          <em>Cargando…</em>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const totalPages = Math.max(1, Math.ceil(count / state.pageSize));
+  return `
+    <p class="admin-hint">Mostrando ${state.from}–${Math.min(state.from + state.pageSize, count)} de ${count} (${totalPages} páginas).</p>
+    <div class="questions-table-wrap">
+      <table class="questions-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Sección</th><th>Subtema</th><th>Ley</th><th>Dificultad</th><th></th>
+          </tr>
+        </thead>
+        <tbody>${safeRows}</tbody>
+      </table>
+    </div>
+    <div class="questions-pager">
+      <button id="pg-prev" class="btn btn-soft btn-small" ${state.page<=1?'disabled':''}>« Anterior</button>
+      <span>Página ${state.page} de ${totalPages}</span>
+      <button id="pg-next" class="btn btn-soft btn-small" ${state.page>=totalPages?'disabled':''}>Siguiente »</button>
+    </div>`;
+}
+
+function bindPagination() {
+  document.getElementById('pg-prev')?.addEventListener('click', () => {
+    if (state.page > 1) { state.page--; loadQuestions(); }
+  });
+  document.getElementById('pg-next')?.addEventListener('click', () => {
+    state.page++; loadQuestions();
+  });
+}
+
+function bindRowEvents() {
+  const body = document.querySelector('#admin-questions-body');
+  body.querySelectorAll('button[data-action]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === 'expand') {
+        toggleExpand(id);
+        return;
+      }
+      if (action === 'edit') {
+        const all = currentRows || [];
+        const row = all.find(r => r.id === id);
+        openEditor(body, row);
+        return;
+      }
+      if (action === 'delete') {
+        if (!confirm(`¿Eliminar la pregunta ${id}?`)) return;
+        try {
+          await deleteQuestion(id);
+          await loadQuestions();
+        } catch (e) { alert(e.message); }
+      }
+    });
+  });
+}
+
+let currentRows = null;
+
+async function toggleExpand(id) {
+  const detail = document.querySelector(`.questions-detail-row[data-detail-id="${id}"]`);
+  if (!detail) return;
+  detail.classList.toggle('is-open');
+  if (!detail.classList.contains('is-open')) return;
+  const content = detail.querySelector('.questions-detail-content');
+  if (content.dataset.loaded === 'true') return;
+  // Lazy load: cargamos la pregunta completa desde BD
+  try {
+    const sb = (await import('./supabase.js')).getSupabase();
+    const { data } = await sb.from('questions').select('*').eq('id', id).maybeSingle();
+    if (data) {
+      content.innerHTML = renderDetail(data);
+      content.dataset.loaded = 'true';
+    }
+  } catch (e) {
+    content.innerHTML = 'Error: ' + escapeHtml(e.message);
+  }
+}
+
+function renderDetail(q) {
+  return `
+    <div class="questions-detail-grid">
+      <div><strong>Prompt:</strong> <code>${escapeHtml(q.prompt)}</code></div>
+      <div><strong>Opciones:</strong>
+        <ol>
+          ${(q.options || []).map((o, i) => `<li${o.correct?' class="q-correct"':''}>${escapeHtml(o.latex || '')}</li>`).join('')}
+        </ol>
+      </div>
+      <div><strong>Explicación:</strong> ${escapeHtml(q.explanation || '')}</div>
+    </div>`;
+}
+
+async function openEditor(body, row) {
   const wrap = document.createElement('div');
   wrap.className = 'card mt-2';
   wrap.innerHTML = `
@@ -158,12 +339,14 @@ function openEditor(body, row) {
     try {
       await updateQuestion(row.id, { difficulty, prompt: promptText, options, explanation });
       wrap.remove();
-      showBrowse();
+      await loadQuestions();
     } catch (err) {
       alert('Error al guardar: ' + err.message);
     }
   });
 }
+
+// ============ Subir JSON ============
 
 function showUpload() {
   const body = document.querySelector('#admin-questions-body');
@@ -218,13 +401,13 @@ function showUpload() {
   commitBtn.addEventListener('click', async () => {
     if (!validated) return;
     const meta = validated.meta;
-    const sb = getSupabaseClient();
+    const sb = (await import('./supabase.js')).getSupabase();
     if (!sb) { alert('Supabase no disponible'); return; }
     const rows = validated.questions.map((q) => ({
       id: q.id,
-      section_id: meta.sectionId || q.section || prompt('Sección:') || '',
-      subtema_id: meta.subtemaId || q.subtema || prompt('Subtema:') || '',
-      law_id:     meta.lawId     || q.law     || prompt('Ley:')     || '',
+      section_id: meta.sectionId || q.section || '',
+      subtema_id: meta.subtemaId || q.subtema || '',
+      law_id:     meta.lawId     || q.law     || '',
       difficulty: q.difficulty,
       prompt: q.prompt,
       options: q.options,
@@ -241,7 +424,6 @@ function showUpload() {
       validated = null;
       commitBtn.disabled = true;
       previewBody.innerHTML = '';
-      showBrowse();
     } catch (err) {
       msg.textContent = 'Error al insertar: ' + err.message;
       msg.className = 'auth-msg auth-err';

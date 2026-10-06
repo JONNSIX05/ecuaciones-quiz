@@ -1430,3 +1430,159 @@ body.modal-open {
     width: 100%;
   }
 }
+
+/* ---------- Temperature Modal (terminos y condiciones) ---------- */
+.terms-shell {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 60;
+}
+.terms-modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: min(760px, 100%);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.terms-modal__content {
+  padding: 1.5rem 1.5rem 0.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.terms-modal__content h2 {
+  margin-top: 0;
+}
+.terms-modal__content h3 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.3rem;
+  font-size: 1rem;
+}
+.terms-modal__content p {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin-bottom: 0.8rem;
+  color: var(--ink-soft);
+}
+.terms-modal__footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.terms-modal__check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+.terms-modal__footer .btn[disabled] {
+  opacity: 0.45;
+}
+
+/* ---------- Auth card (login/registro) ---------- */
+.auth-card { max-width: 420px; margin: 2rem auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.8rem; box-shadow: var(--shadow-md); }
+.auth-title { font-size: 1.45rem; margin: 0 0 0.3rem; text-align: center; }
+.auth-sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.5rem; text-align: center; }
+.auth-tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; background: var(--paper); padding: 0.3rem; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.auth-tab { flex: 1; padding: 0.55rem 0.4rem; background: transparent; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; color: var(--ink-soft); transition: background-color .12s ease, color .12s ease; }
+.auth-tab.is-active { background: var(--accent); color: var(--accent-ink); }
+.auth-form { display: flex; flex-direction: column; gap: 0.9rem; }
+.auth-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.auth-field span { font-size: 0.85rem; color: var(--ink-soft); font-weight: 600; }
+.auth-field input { width: 100%; padding: 0.65rem 0.8rem; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--paper); color: var(--ink); font-size: 1rem; }
+.auth-field input:focus { outline: 3px solid var(--focus); outline-offset: 1px; border-color: var(--accent); }
+.auth-foot { text-align: center; font-size: 0.78rem; color: var(--muted); margin-top: 1.2rem; }
+.auth-msg { min-height: 1.1rem; font-size: 0.88rem; text-align: center; margin-top: 0.2rem; }
+.auth-msg.auth-ok { color: var(--correct); }
+.auth-msg.auth-err { color: var(--wrong); }
+
+/* ---------- Admin questions: filtros + tabla + paginación ---------- */
+.questions-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.questions-filters input,
+.questions-filters select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.9rem;
+  width: 100%;
+}
+.questions-filters button {
+  padding: 0.55rem 0.9rem;
+}
+.questions-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+.questions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.questions-table th,
+.questions-table td {
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.questions-table th {
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.questions-table tr:last-child td { border-bottom: none; }
+.questions-pager {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 1rem;
+  align-items: center;
+}
+.questions-pager button {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+}
+.questions-pager button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.questions-pager span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.questions-detail-row {
+  display: none;
+  background: var(--paper-deep);
+  padding: 0.8rem 1rem;
+}
+.questions-detail-row.is-open {
+  display: table-row;
+}
+.questions-detail-row td {
+  white-space: normal;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}

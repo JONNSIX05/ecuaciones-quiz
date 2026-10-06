@@ -202,10 +202,42 @@ function renderBody(profiles, quizAttempts, practiceAttempts) {
     })(),
     practiceTotal: practiceAttempts.length,
     practiceCorrect: practiceAttempts.filter((a) => a.correct).length,
+    bySection: {},
   };
+  // Conteo por sección.
+  for (const a of quizAttempts) {
+    const sec = a.section_id || 'sin sección';
+    const cur = totals.bySection[sec] || { attempts: 0, correct: 0, total: 0 };
+    cur.attempts += 1;
+    cur.correct += Number(a.score) || 0;
+    cur.total += Number(a.total) || 0;
+    totals.bySection[sec] = cur;
+  }
   const practiceAvg = totals.practiceTotal
     ? Math.round((totals.practiceCorrect / totals.practiceTotal) * 100)
     : 0;
+
+  // Últimos 5 intentos de quiz
+  const recent = quizAttempts.slice(0, 5);
+
+  const recentHtml = recent.length === 0
+    ? '<p class="admin-empty">Sin intentos aún.</p>'
+    : renderTable(['Email', 'Sección', 'Ley', 'Puntaje', 'Fecha'],
+        recent.map((a) => {
+          const profile = profileMap.get(a.user_id);
+          return [
+            escapeHtml(profile?.email || '(sin email)'),
+            escapeHtml(sectionLabel(a.section_id || '')),
+            escapeHtml(a.law_name || a.law_id || ''),
+            `${a.score}/${a.total}`,
+            fmtDate(a.created_at),
+          ];
+        }));
+
+  const bySectionRows = Object.entries(totals.bySection).map(([sec, v]) => {
+    const pct = v.total ? Math.round((v.correct / v.total) * 100) : 0;
+    return [escapeHtml(sectionLabel(sec)), v.attempts, `${pct}%`];
+  });
 
   return `
     <section class="kpi-row">
@@ -213,6 +245,13 @@ function renderBody(profiles, quizAttempts, practiceAttempts) {
       <div class="kpi-card"><span class="kpi-num">${totals.attempts}</span><span class="kpi-label">intentos de quiz</span></div>
       <div class="kpi-card"><span class="kpi-num">${totals.avg}%</span><span class="kpi-label">promedio global</span></div>
       <div class="kpi-card"><span class="kpi-num">${totals.practiceTotal}</span><span class="kpi-label">práctica libre · ${practiceAvg}% acierto</span></div>
+    </section>
+
+    <section class="admin-section">
+      <h3>Intentos por sección</h3>
+      ${bySectionRows.length === 0
+        ? '<p class="admin-empty">Sin datos.</p>'
+        : renderTable(['Sección', 'Intentos', 'Acierto'], bySectionRows)}
     </section>
 
     <section class="admin-section">
@@ -242,6 +281,11 @@ function renderBody(profiles, quizAttempts, practiceAttempts) {
               `<strong>${Math.round(r.avg)}%</strong>`,
               fmtDate(r.lastAt),
             ]))}
+    </section>
+
+    <section class="admin-section">
+      <h3>Últimos intentos</h3>
+      ${recentHtml}
     </section>
 
     <section class="admin-section">

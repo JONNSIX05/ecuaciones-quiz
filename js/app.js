@@ -15,7 +15,8 @@ import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
 import { getSupabase, isSupabaseReady } from './supabase.js';
-import { getSession, signIn, signUp, signOut, isAdmin } from './auth.js';
+import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js';
+import { TERMS_DEFAULT, termsToHtml } from './terms.js';
 import { saveAttempt } from './results.js';
 import { renderAdminDashboard } from './admin.js';
 import { getLaw as getLawRemote } from './questions.js';
@@ -875,11 +876,71 @@ document.addEventListener('keydown', (e) => {
 /* -------------------------------------------------------------
    Vista: autenticación (login / registro)
    ------------------------------------------------------------- */
-function renderAuth() {
+async function renderAuth() {
+  // Si ya aceptó la versión actual de Términos, ir directo al form;
+  // si no, mostrar primero el modal de Términos y luego el form.
+  const alreadyAccepted = await hasAcceptedCurrentTerms();
+  if (alreadyAccepted) {
+    showAuthForm();
+  } else {
+    showTermsModal();
+  }
+}
+
+function showTermsModal() {
+  view.innerHTML = `
+    <div class="terms-shell">
+      <div class="terms-modal">
+        <h1 class="auth-title">Términos y Condiciones</h1>
+        <p class="auth-sub">Lee el aviso de privacidad. Al final marca la casilla para continuar.</p>
+        <div id="terms-content" class="terms-modal__content"></div>
+        <div class="terms-modal__footer">
+          <label class="terms-modal__check">
+            <input type="checkbox" id="terms-accept" disabled>
+            <span>He leído y acepto los Términos y Condiciones y el aviso de privacidad</span>
+          </label>
+          <button id="terms-continue" class="btn btn-primary btn-block" type="button" disabled>Aceptar y continuar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const content = view.querySelector('#terms-content');
+  content.innerHTML = termsToHtml(TERMS_DEFAULT);
+
+  const scrollTarget = content;
+  const accept = view.querySelector('#terms-accept');
+  const continueBtn = view.querySelector('#terms-continue');
+
+  // Habilitar el checkbox solo cuando el usuario haya scrolleado al fondo.
+  function checkScroll() {
+    const atBottom = scrollTarget.scrollTop + scrollTarget.clientHeight
+    >= scrollTarget.scrollHeight - 1;
+    if (atBottom) accept.disabled = false;
+  }
+  scrollTarget.addEventListener('scroll', checkScroll);
+  // Trigger inicial (por si el contenido cabe sin scroll).
+  checkScroll();
+
+  accept.addEventListener('change', () => {
+    continueBtn.disabled = !accept.checked;
+  });
+
+  continueBtn.addEventListener('click', async () => {
+    const user = await getUser() ?? (await getSession())?.user;
+    if (!user) {
+      // Sin sesión: el alta se registrará en el form (signUp).
+    } else {
+      const version = await getCurrentTermsVersion();
+      await acceptTerms(user.id, version);
+    }
+    showAuthForm();
+  });
+}
+
+function showAuthForm() {
   view.innerHTML = `
     <div class="auth-card">
-      <h1 class="auth-title">Quiz de Matemáticas</h1>
-      <p class="auth-sub">Inicia sesión para acceder al contenido</p>
       <div class="auth-tabs">
         <button id="auth-tab-login" class="auth-tab is-active" type="button">Iniciar sesión</button>
         <button id="auth-tab-register" class="auth-tab" type="button">Registrarse</button>
@@ -893,31 +954,39 @@ function renderAuth() {
           <span>Contraseña</span>
           <input type="password" id="auth-password" required minlength="6" autocomplete="current-password">
         </label>
+        <label class="auth-field" id="auth-name-field" hidden>
+          <span>Nombre (opcional)</span>
+          <input type="text" id="auth-name" autocomplete="name">
+        </label>
         <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Entrar</button>
         <div id="auth-msg" class="auth-msg" role="status"></div>
       </form>
-      <p class="auth-foot">Sin acceso offline. Si la red de tu escuela bloquea Supabase, contacta al profesor.</p>
-    </div>`;
+    </div>
+  `;
 
   const tabLogin = view.querySelector('#auth-tab-login');
   const tabRegister = view.querySelector('#auth-tab-register');
+  const nameField = view.querySelector('#auth-name-field');
   const submitBtn = view.querySelector('#auth-submit');
   const msgEl = view.querySelector('#auth-msg');
 
   function setMode(mode) {
     tabLogin.classList.toggle('is-active', mode === 'login');
     tabRegister.classList.toggle('is-active', mode === 'register');
+    nameField.hidden = mode !== 'register';
     submitBtn.textContent = mode === 'login' ? 'Entrar' : 'Crear cuenta';
     msgEl.textContent = '';
     msgEl.className = 'auth-msg';
   }
   tabLogin.addEventListener('click', () => setMode('login'));
   tabRegister.addEventListener('click', () => setMode('register'));
+  setMode('login');
 
   view.querySelector('#auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = view.querySelector('#auth-email').value.trim();
     const password = view.querySelector('#auth-password').value;
+    const fullName = view.querySelector('#auth-name').value.trim();
     const mode = tabRegister.classList.contains('is-active') ? 'register' : 'login';
     if (!email || !password) {
       msgEl.textContent = 'Completa correo y contraseña.';
@@ -928,8 +997,14 @@ function renderAuth() {
     msgEl.textContent = mode === 'login' ? 'Iniciando sesión…' : 'Creando cuenta…';
     msgEl.className = 'auth-msg';
     try {
-      const fn = mode === 'login' ? signIn : signUp;
-      const { error } = await fn(email, password);
+      let result;
+      if (mode === 'login') {
+        result = await signIn(email, password);
+      } else {
+        const version = await getCurrentTermsVersion();
+        result = await signUp(email, password, fullName, version);
+      }
+      const { error } = result;
       if (error) {
         msgEl.textContent = error.message || 'Error de autenticación.';
         msgEl.className = 'auth-msg auth-err';
