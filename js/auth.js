@@ -145,7 +145,9 @@ export async function signOut() {
 export async function isAdmin() {
   const sb = getSupabase();
   if (!sb) return false;
-  const user = await getUser();
+  // getSession es local y no cuelga; getUser hace fetch al endpoint de auth.
+  const session = await getSession();
+  const user = session?.user ?? (await getUser());
   if (!user) return false;
   const { data } = await sb
     .from('profiles')
@@ -162,7 +164,9 @@ export async function isAdmin() {
 export async function hasAcceptedCurrentTerms() {
   const sb = getSupabase();
   if (!sb) return false;
-  const user = await getUser();
+  // getSession es local y no cuelga; getUser hace fetch al endpoint de auth.
+  const session = await getSession();
+  const user = session?.user ?? (await getUser());
   if (!user) return false;
   const current = await getCurrentTermsVersion();
   const last = await getLatestTermsAcceptance(user.id);

@@ -927,10 +927,10 @@ function showTermsModal() {
   });
 
   continueBtn.addEventListener('click', async () => {
-    const user = await getUser() ?? (await getSession())?.user;
-    if (!user) {
-      // Sin sesión: el alta se registrará en el form (signUp).
-    } else {
+    // getSession es local (instantáneo); getUser va a la red y puede colgar si no hay sesión.
+    const session = await getSession();
+    const user = session?.user ?? (await getUser());
+    if (user) {
       const version = await getCurrentTermsVersion();
       await acceptTerms(user.id, version);
     }
