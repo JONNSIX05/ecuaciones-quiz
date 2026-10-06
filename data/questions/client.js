@@ -100,6 +100,21 @@ export async function deleteQuestion(id) {
 }
 
 /**
+ * Lista preguntas por sección/subtema/ley. (DEPRECATED: usar listQuestionsRange.)
+ */
+export async function listQuestions(filter = {}) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('SUPABASE_NOT_READY');
+  let q = sb.from('questions').select('id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation').order('id');
+  if (filter.sectionId) q = q.eq('section_id', filter.sectionId);
+  if (filter.subtemaId) q = q.eq('subtema_id', filter.subtemaId);
+  if (filter.lawId) q = q.eq('law_id', filter.lawId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
  * Lista paginada con búsqueda en el campo `prompt`.
  * @param {{from:number, to:number, section_id?:string, subtema_id?:string, law_id?:string, difficulty?:string, search?:string}} filter
  * @returns {Promise<{rows:object[], count:number, from:number}>}
