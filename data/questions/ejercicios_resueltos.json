@@ -1,0 +1,364 @@
+{
+  "questions": [
+    {
+      "id": "bincuad-ext-01",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "binomio-cuadrado",
+      "difficulty": "easy",
+      "prompt": "Desarrolla el binomio al cuadrado: $(x+5)^2$",
+      "options": [
+        { "latex": "x^2 + 10x + 25", "correct": true },
+        { "latex": "x^2 + 25", "correct": false },
+        { "latex": "x^2 + 5x + 25", "correct": false },
+        { "latex": "x^2 + 10x + 10", "correct": false }
+      ],
+      "explanation": "Identificando los terminos $a = x$ y $b = 5$, aplicamos la regla $(a+b)^2 = a^2 + 2ab + b^2$: $(x)^2 + 2(x)(5) + (5)^2 = x^2 + 10x + 25$."
+    },
+    {
+      "id": "bincuad-ext-02",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "binomio-cuadrado",
+      "difficulty": "easy",
+      "prompt": "Desarrolla el binomio al cuadrado: $(2a - 3b)^2$",
+      "options": [
+        { "latex": "4a^2 - 12ab + 9b^2", "correct": true },
+        { "latex": "4a^2 - 9b^2", "correct": false },
+        { "latex": "4a^2 - 6ab + 9b^2", "correct": false },
+        { "latex": "2a^2 - 12ab + 3b^2", "correct": false }
+      ],
+      "explanation": "Identificando los terminos $a = 2a$ y $b = 3b$, aplicamos $(a-b)^2 = a^2 - 2ab + b^2$: $(2a)^2 - 2(2a)(3b) + (3b)^2 = 4a^2 - 12ab + 9b^2$."
+    },
+    {
+      "id": "bincuad-ext-03",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "binomio-cuadrado",
+      "difficulty": "easy",
+      "prompt": "Desarrolla el binomio al cuadrado: $(3x + 2y)^2$",
+      "options": [
+        { "latex": "9x^2 + 12xy + 4y^2", "correct": true },
+        { "latex": "9x^2 + 6xy + 4y^2", "correct": false },
+        { "latex": "9x^2 + 4y^2", "correct": false },
+        { "latex": "3x^2 + 12xy + 2y^2", "correct": false }
+      ],
+      "explanation": "Con $a = 3x$ y $b = 2y$: $(3x)^2 + 2(3x)(2y) + (2y)^2 = 9x^2 + 12xy + 4y^2$."
+    },
+    {
+      "id": "bincuad-ext-04",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "binomio-cuadrado",
+      "difficulty": "medium",
+      "prompt": "Desarrolla el binomio al cuadrado: $(5m - 4n^2)^2$",
+      "options": [
+        { "latex": "25m^2 - 40mn^2 + 16n^4", "correct": true },
+        { "latex": "25m^2 - 20mn^2 + 16n^4", "correct": false },
+        { "latex": "25m^2 - 40mn^2 + 16n^2", "correct": false },
+        { "latex": "25m^2 - 16n^4", "correct": false }
+      ],
+      "explanation": "Aplicando la regla del cuadrado de un binomio: $(5m)^2 - 2(5m)(4n^2) + (4n^2)^2 = 25m^2 - 40mn^2 + 16n^4$."
+    },
+    {
+      "id": "bincuad-ext-05",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "binomio-cuadrado",
+      "difficulty": "medium",
+      "prompt": "Desarrolla el binomio con coeficiente fraccionario: $\\left(\\dfrac{1}{2}x + 4\\right)^2$",
+      "options": [
+        { "latex": "\\dfrac{1}{4}x^2 + 4x + 16", "correct": true },
+        { "latex": "\\dfrac{1}{2}x^2 + 4x + 16", "correct": false },
+        { "latex": "\\dfrac{1}{4}x^2 + 2x + 16", "correct": false },
+        { "latex": "\\dfrac{1}{4}x^2 + 16", "correct": false }
+      ],
+      "explanation": "$\\left(\\dfrac{1}{2}x\\right)^2 + 2\\left(\\dfrac{1}{2}x\\right)(4) + (4)^2 = \\dfrac{1}{4}x^2 + 4x + 16$, ya que $2 \\cdot \\dfrac{1}{2} = 1$ y $1 \\cdot 4 = 4$."
+    },
+    {
+      "id": "bincuad-ext-06",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "binomio-cuadrado",
+      "difficulty": "hard",
+      "prompt": "Desarrolla el binomio con coeficientes fraccionarios: $\\left(\\dfrac{2}{3}a - \\dfrac{3}{4}b\\right)^2$",
+      "options": [
+        { "latex": "\\dfrac{4}{9}a^2 - ab + \\dfrac{9}{16}b^2", "correct": true },
+        { "latex": "\\dfrac{4}{9}a^2 - \\dfrac{1}{2}ab + \\dfrac{9}{16}b^2", "correct": false },
+        { "latex": "\\dfrac{4}{9}a^2 - 2ab + \\dfrac{9}{16}b^2", "correct": false },
+        { "latex": "\\dfrac{4}{9}a^2 + \\dfrac{9}{16}b^2", "correct": false }
+      ],
+      "explanation": "$\\left(\\dfrac{2}{3}a\\right)^2 - 2\\left(\\dfrac{2}{3}a\\right)\\left(\\dfrac{3}{4}b\\right) + \\left(\\dfrac{3}{4}b\\right)^2 = \\dfrac{4}{9}a^2 - ab + \\dfrac{9}{16}b^2$. El termino central se simplifica: $2 \\cdot \\dfrac{2}{3} \\cdot \\dfrac{3}{4} = 2 \\cdot \\dfrac{6}{12} = 1$."
+    },
+    {
+      "id": "tcp-ext-01",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "trinomio-cuadrado-perfecto",
+      "difficulty": "easy",
+      "prompt": "Factoriza el trinomio cuadrado perfecto: $x^2 + 6x + 9$",
+      "options": [
+        { "latex": "(x + 3)^2", "correct": true },
+        { "latex": "(x - 3)^2", "correct": false },
+        { "latex": "(x + 9)^2", "correct": false },
+        { "latex": "(x + 3)(x - 3)", "correct": false }
+      ],
+      "explanation": "Raices de los extremos: $\\sqrt{x^2} = x$ y $\\sqrt{9} = 3$. Doble producto: $2(x)(3) = 6x$, que coincide con el termino central. Por lo tanto, el resultado es $(x+3)^2$."
+    },
+    {
+      "id": "tcp-ext-02",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "trinomio-cuadrado-perfecto",
+      "difficulty": "easy",
+      "prompt": "Factoriza el trinomio cuadrado perfecto: $25x^2 - 30xy + 9y^2$",
+      "options": [
+        { "latex": "(5x - 3y)^2", "correct": true },
+        { "latex": "(5x + 3y)^2", "correct": false },
+        { "latex": "(25x - 9y)^2", "correct": false },
+        { "latex": "(5x - 3y)(5x + 3y)", "correct": false }
+      ],
+      "explanation": "Raices de los extremos: $\\sqrt{25x^2} = 5x$ y $\\sqrt{9y^2} = 3y$. Doble producto: $2(5x)(3y) = 30xy$. Al tener signo negativo en el termino central, el binomio factorizado es $(5x - 3y)^2$."
+    },
+    {
+      "id": "tcp-ext-03",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "trinomio-cuadrado-perfecto",
+      "difficulty": "easy",
+      "prompt": "Factoriza el trinomio cuadrado perfecto: $16m^2 + 40mn + 25n^2$",
+      "options": [
+        { "latex": "(4m + 5n)^2", "correct": true },
+        { "latex": "(4m - 5n)^2", "correct": false },
+        { "latex": "(8m + 5n)^2", "correct": false },
+        { "latex": "(4m + 25n)^2", "correct": false }
+      ],
+      "explanation": "Raices de los extremos: $\\sqrt{16m^2} = 4m$ y $\\sqrt{25n^2} = 5n$. Doble producto: $2(4m)(5n) = 40mn$. El trinomio factorizado es $(4m+5n)^2$."
+    },
+    {
+      "id": "tcp-ext-04",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "trinomio-cuadrado-perfecto",
+      "difficulty": "medium",
+      "prompt": "Factoriza el trinomio: $49a^4 - 28a^2b + 4b^2$",
+      "options": [
+        { "latex": "(7a^2 - 2b)^2", "correct": true },
+        { "latex": "(7a - 2b)^2", "correct": false },
+        { "latex": "(7a^2 + 2b)^2", "correct": false },
+        { "latex": "(49a^2 - 4b)^2", "correct": false }
+      ],
+      "explanation": "Raices de los extremos: $\\sqrt{49a^4} = 7a^2$ y $\\sqrt{4b^2} = 2b$. Doble producto: $2(7a^2)(2b) = 28a^2b$. Con signo central negativo, el resultado es $(7a^2 - 2b)^2$."
+    },
+    {
+      "id": "tcp-ext-05",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "trinomio-cuadrado-perfecto",
+      "difficulty": "medium",
+      "prompt": "Factoriza el trinomio con fraccion: $x^2 + x + \\dfrac{1}{4}$",
+      "options": [
+        { "latex": "\\left(x + \\dfrac{1}{2}\\right)^2", "correct": true },
+        { "latex": "\\left(x - \\dfrac{1}{2}\\right)^2", "correct": false },
+        { "latex": "\\left(x + \\dfrac{1}{4}\\right)^2", "correct": false },
+        { "latex": "(x + 1)^2", "correct": false }
+      ],
+      "explanation": "Raices: $\\sqrt{x^2} = x$ y $\\sqrt{1/4} = 1/2$. Doble producto: $2(x)(1/2) = x$. Corresponde a $(x + 1/2)^2$."
+    },
+    {
+      "id": "tcp-ext-06",
+      "section": "algebra",
+      "subtema": "productos-notables",
+      "law": "trinomio-cuadrado-perfecto",
+      "difficulty": "hard",
+      "prompt": "Factoriza el trinomio con coeficientes fraccionarios: $\\dfrac{1}{9}x^2 - \\dfrac{2}{3}xy + y^2$",
+      "options": [
+        { "latex": "\\left(\\dfrac{1}{3}x - y\\right)^2", "correct": true },
+        { "latex": "\\left(\\dfrac{1}{3}x + y\\right)^2", "correct": false },
+        { "latex": "\\left(\\dfrac{1}{9}x - y\\right)^2", "correct": false },
+        { "latex": "\\left(\\dfrac{1}{3}x - 2y\\right)^2", "correct": false }
+      ],
+      "explanation": "Raices: $\\sqrt{(1/9)x^2} = (1/3)x$ y $\\sqrt{y^2} = y$. Doble producto: $2((1/3)x)(y) = (2/3)xy$. El trinomio factorizado es $((1/3)x - y)^2$."
+    },
+    {
+      "id": "der-const-ext-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la funcion constante: $f(x) = 15$",
+      "options": [
+        { "latex": "0", "correct": true },
+        { "latex": "15", "correct": false },
+        { "latex": "1", "correct": false },
+        { "latex": "15x", "correct": false }
+      ],
+      "explanation": "La derivada de cualquier constante numerica real respecto a $x$ es cero: $\\dfrac{d}{dx}(c) = 0$, por tanto $f'(x) = 0$."
+    },
+    {
+      "id": "der-const-ext-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $y = e$ (numero de Euler)",
+      "options": [
+        { "latex": "0", "correct": true },
+        { "latex": "e", "correct": false },
+        { "latex": "1", "correct": false },
+        { "latex": "e^x", "correct": false }
+      ],
+      "explanation": "El numero de Euler $e \\approx 2.71828$ es una constante fija independiente de $x$. Su derivada es $\\dfrac{dy}{dx} = 0$. No debe confundirse con la funcion exponencial $e^x$."
+    },
+    {
+      "id": "der-const-ext-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $g(x) = -\\sqrt{5}$",
+      "options": [
+        { "latex": "0", "correct": true },
+        { "latex": "-\\dfrac{1}{2\\sqrt{5}}", "correct": false },
+        { "latex": "-\\sqrt{5}", "correct": false },
+        { "latex": "-1", "correct": false }
+      ],
+      "explanation": "El valor $-\\sqrt{5}$ representa un numero real constante sin dependencia de la variable $x$, por lo que $g'(x) = 0$."
+    },
+    {
+      "id": "der-const-ext-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $h(x) = \\pi^3$",
+      "options": [
+        { "latex": "0", "correct": true },
+        { "latex": "3\\pi^2", "correct": false },
+        { "latex": "\\pi^3", "correct": false },
+        { "latex": "3\\pi", "correct": false }
+      ],
+      "explanation": "Aunque $\\pi$ esta elevado al cubo, es un numero real constante y no contiene variables. La derivada de toda constante es 0: $h'(x) = 0$."
+    },
+    {
+      "id": "der-const-ext-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $f(x) = \\ln(2)$",
+      "options": [
+        { "latex": "0", "correct": true },
+        { "latex": "\\dfrac{1}{2}", "correct": false },
+        { "latex": "\\ln(2)", "correct": false },
+        { "latex": "1", "correct": false }
+      ],
+      "explanation": "El logaritmo natural de una constante numerica es tambien una constante fija: $\\ln(2) \\approx 0.6931$. Su derivada es $f'(x) = 0$."
+    },
+    {
+      "id": "der-const-ext-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $y = \\dfrac{7}{4}$",
+      "options": [
+        { "latex": "0", "correct": true },
+        { "latex": "\\dfrac{7}{4}", "correct": false },
+        { "latex": "1", "correct": false },
+        { "latex": "\\dfrac{7}{4}x", "correct": false }
+      ],
+      "explanation": "El numero $\\dfrac{7}{4}$ es una constante racional pura. Aplicando $\\dfrac{d}{dx}(c) = 0$, obtenemos $\\dfrac{dy}{dx} = 0$."
+    },
+    {
+      "id": "der-var-ext-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la funcion identidad: $f(x) = x$",
+      "options": [
+        { "latex": "1", "correct": true },
+        { "latex": "0", "correct": false },
+        { "latex": "x", "correct": false },
+        { "latex": "x^2", "correct": false }
+      ],
+      "explanation": "Por la regla de potencias: $\\dfrac{d}{dx}(x^1) = 1 \\cdot x^{1-1} = 1 \\cdot x^0 = 1$."
+    },
+    {
+      "id": "der-var-ext-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $f(x) = x^7$",
+      "options": [
+        { "latex": "7x^6", "correct": true },
+        { "latex": "6x^7", "correct": false },
+        { "latex": "7x^8", "correct": false },
+        { "latex": "x^6", "correct": false }
+      ],
+      "explanation": "Aplicando la regla de la potencia $\\dfrac{d}{dx}(x^n) = nx^{n-1}$: bajamos el exponente $7$ y restamos 1: $7x^{7-1} = 7x^6$."
+    },
+    {
+      "id": "der-var-ext-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de: $g(x) = x^{12}$",
+      "options": [
+        { "latex": "12x^{11}", "correct": true },
+        { "latex": "12x^{12}", "correct": false },
+        { "latex": "11x^{12}", "correct": false },
+        { "latex": "12x^{13}", "correct": false }
+      ],
+      "explanation": "Bajar el exponente $12$ como coeficiente y restar uno al exponente: $g'(x) = 12x^{12-1} = 12x^{11}$."
+    },
+    {
+      "id": "der-var-ext-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Calcula la derivada de la potencia negativa: $h(x) = x^{-3}$",
+      "options": [
+        { "latex": "-3x^{-4} \\quad \\left(-\\dfrac{3}{x^4}\\right)", "correct": true },
+        { "latex": "-3x^{-2} \\quad \\left(-\\dfrac{3}{x^2}\\right)", "correct": false },
+        { "latex": "3x^{-4} \\quad \\left(\\dfrac{3}{x^4}\\right)", "correct": false },
+        { "latex": "-x^{-4} \\quad \\left(-\\dfrac{1}{x^4}\\right)", "correct": false }
+      ],
+      "explanation": "Aplicando la regla de la potencia: $(-3)x^{-3-1} = -3x^{-4}$, lo cual equivale algebraicamente a $-\\dfrac{3}{x^4}$."
+    },
+    {
+      "id": "der-var-ext-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Calcula la derivada de la raiz cuadrada: $f(x) = \\sqrt{x}$",
+      "options": [
+        { "latex": "\\dfrac{1}{2\\sqrt{x}}", "correct": true },
+        { "latex": "\\dfrac{1}{\\sqrt{x}}", "correct": false },
+        { "latex": "\\dfrac{1}{2}x^{1/2}", "correct": false },
+        { "latex": "2\\sqrt{x}", "correct": false }
+      ],
+      "explanation": "Reescribiendo como exponente fraccionario: $f(x) = x^{1/2}$. Derivando: $\\dfrac{1}{2}x^{\\frac{1}{2}-1} = \\dfrac{1}{2}x^{-1/2} = \\dfrac{1}{2\\sqrt{x}}$."
+    },
+    {
+      "id": "der-var-ext-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Calcula la derivada de: $y = \\dfrac{1}{x^4}$",
+      "options": [
+        { "latex": "-\\dfrac{4}{x^5}", "correct": true },
+        { "latex": "-\\dfrac{4}{x^3}", "correct": false },
+        { "latex": "\\dfrac{4}{x^5}", "correct": false },
+        { "latex": "-\\dfrac{1}{4x^5}", "correct": false }
+      ],
+      "explanation": "Expresando con exponente negativo: $y = x^{-4}$. Derivando con la regla de potencias: $\\dfrac{dy}{dx} = -4x^{-4-1} = -4x^{-5} = -\\dfrac{4}{x^5}$."
+    }
+  ]
+}

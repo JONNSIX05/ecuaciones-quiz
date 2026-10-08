@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migración Supabase: Sección 02 - Cálculo Diferencial (183 preguntas)
 -- Total preguntas en este script: 183
--- Fecha de generación: 2026-10-08T16:01:15.344Z
+-- Fecha de generación: 2026-10-08T18:10:16.013Z
 -- =====================================================================
 
 -- Tabla e índices base

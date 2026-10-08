@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migración Supabase: Catálogo Completo Global (758 preguntas)
 -- Total preguntas en este script: 758
--- Fecha de generación: 2026-10-08T16:01:15.351Z
+-- Fecha de generación: 2026-10-08T18:10:16.020Z
 -- =====================================================================
 
 -- Tabla e índices base

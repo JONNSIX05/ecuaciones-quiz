@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migración Supabase: Sección 01 - Álgebra (420 preguntas)
 -- Total preguntas en este script: 420
--- Fecha de generación: 2026-10-08T16:01:15.333Z
+-- Fecha de generación: 2026-10-08T18:10:16.004Z
 -- =====================================================================
 
 -- Tabla e índices base

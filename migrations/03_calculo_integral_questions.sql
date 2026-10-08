@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migración Supabase: Sección 03 - Cálculo Integral (155 preguntas)
 -- Total preguntas en este script: 155
--- Fecha de generación: 2026-10-08T16:01:15.347Z
+-- Fecha de generación: 2026-10-08T18:10:16.018Z
 -- =====================================================================
 
 -- Tabla e índices base
