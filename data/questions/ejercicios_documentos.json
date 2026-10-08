@@ -1,0 +1,1309 @@
+{
+  "metadata": {
+    "generated_at": "2026-10-08T18:44:35.988Z",
+    "total_questions": 48,
+    "source_documents": [
+      "codigo_latex.pdf",
+      "Codigo latex.pdf",
+      "Ejercicios Calculo (Con portada).pdf"
+    ]
+  },
+  "questions": [
+    {
+      "id": "int-var-01",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral indefinida: $\\int \\frac{1}{x^{2}\\sqrt[5]{x^{2}}}\\,dx$",
+      "options": [
+        {
+          "latex": "-\\frac{5}{7\\sqrt[5]{x^{7}}} + C",
+          "correct": true
+        },
+        {
+          "latex": "-\\frac{7}{5\\sqrt[5]{x^{7}}} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{5}{7\\sqrt[5]{x^{7}}} + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{5}{12\\sqrt[5]{x^{12}}} + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Subimos las potencias del denominador: $x^{-2}x^{-2/5} = x^{-12/5}$. Aplicamos la regla de la potencia: $\\int x^{-12/5}\\,dx = \\frac{x^{-12/5+1}}{-12/5+1} = \\frac{x^{-7/5}}{-7/5} = -\\frac{5}{7\\sqrt[5]{x^{7}}} + C$."
+    },
+    {
+      "id": "int-var-02",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "easy",
+      "prompt": "Calcula la integral indefinida: $\\int (x+2)^{3}\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{1}{4}(x+2)^{4} + C",
+          "correct": true
+        },
+        {
+          "latex": "3(x+2)^{2} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{1}{3}(x+2)^{4} + C",
+          "correct": false
+        },
+        {
+          "latex": "(x+2)^{4} + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Hacemos el cambio de variable $u = x+2$, con $du = dx$. Integrando directamente: $\\int u^{3}\\,du = \\frac{1}{4}u^{4} + C = \\frac{1}{4}(x+2)^{4} + C$."
+    },
+    {
+      "id": "int-var-03",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral indefinida: $\\int (2x+1)(x^{2}+x+1)\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{1}{2}(x^{2}+x+1)^{2} + C",
+          "correct": true
+        },
+        {
+          "latex": "(x^{2}+x+1)^{2} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{1}{3}(x^{2}+x+1)^{3} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{2}{3}(x^{2}+x+1)^{2} + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Hacemos el cambio de variable $u = x^{2}+x+1$, con $du = (2x+1)\\,dx$. La integral resulta en $\\int u\\,du = \\frac{1}{2}u^{2} + C = \\frac{1}{2}(x^{2}+x+1)^{2} + C$."
+    },
+    {
+      "id": "int-var-04",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral indefinida: $\\int \\sin(2x)\\cos(2x)\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{1}{4}\\sin^{2}(2x) + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{2}\\sin^{2}(2x) + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{1}{4}\\cos(2x) + C",
+          "correct": false
+        },
+        {
+          "latex": "\\sin^{2}(2x) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = \\sin(2x)$, tenemos $du = 2\\cos(2x)\\,dx$, por lo que $\\cos(2x)\\,dx = \\frac{du}{2}$. La integral es $\\frac{1}{2}\\int u\\,du = \\frac{1}{4}u^{2} + C = \\frac{1}{4}\\sin^{2}(2x) + C$."
+    },
+    {
+      "id": "int-var-05",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral indefinida: $\\int \\sin^{4}(x)\\cos(x)\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{1}{5}\\sin^{5}(x) + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{4}\\sin^{5}(x) + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{1}{5}\\sin^{5}(x) + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{1}{5}\\cos^{5}(x) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Tomamos $u = \\sin(x)$, con $du = \\cos(x)\\,dx$. Aplicando la regla de la potencia: $\\int u^{4}\\,du = \\frac{1}{5}u^{5} + C = \\frac{1}{5}\\sin^{5}(x) + C$."
+    },
+    {
+      "id": "int-var-06",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "hard",
+      "prompt": "Calcula la integral indefinida: $\\int \\frac{x+1}{\\sqrt[3]{x^{2}+2x+7}}\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{3}{4}\\sqrt[3]{(x^{2}+2x+7)^{2}} + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{2}\\sqrt[3]{(x^{2}+2x+7)^{2}} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{3}{2}\\sqrt[3]{x^{2}+2x+7} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{4}{3}\\sqrt[3]{(x^{2}+2x+7)^{2}} + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Sea $u = x^{2}+2x+7$, entonces $du = (2x+2)\\,dx = 2(x+1)\\,dx$, es decir, $(x+1)\\,dx = \\frac{du}{2}$. Entonces $\\frac{1}{2}\\int u^{-1/3}\\,du = \\frac{1}{2}\\cdot\\frac{u^{2/3}}{2/3} + C = \\frac{3}{4}\\sqrt[3]{(x^{2}+2x+7)^{2}} + C$."
+    },
+    {
+      "id": "int-trig-01",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "easy",
+      "prompt": "Calcula la integral: $\\int (\\cos x - \\sin x)\\,dx$",
+      "options": [
+        {
+          "latex": "\\sin x + \\cos x + C",
+          "correct": true
+        },
+        {
+          "latex": "\\sin x - \\cos x + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\sin x - \\cos x + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\sin x + \\cos x + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Por integrales directas: $\\int \\cos x\\,dx = \\sin x$ y $\\int -\\sin x\\,dx = \\cos x$. El resultado es $\\sin x + \\cos x + C$."
+    },
+    {
+      "id": "int-trig-02",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral: $\\int (3x^{2} - \\sec^{2}x)\\,dx$",
+      "options": [
+        {
+          "latex": "x^{3} - \\tan x + C",
+          "correct": true
+        },
+        {
+          "latex": "x^{3} + \\tan x + C",
+          "correct": false
+        },
+        {
+          "latex": "6x - 2\\sec x\\tan x + C",
+          "correct": false
+        },
+        {
+          "latex": "x^{3} - \\cot x + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Aplicando integrales inmediatas por término: $\\int 3x^{2}\\,dx = x^{3}$ y $\\int -\\sec^{2}x\\,dx = -\\tan x$. Resultado: $x^{3} - \\tan x + C$."
+    },
+    {
+      "id": "int-trig-03",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral: $\\int e^{x}\\cos(e^{x})\\,dx$",
+      "options": [
+        {
+          "latex": "\\sin(e^{x}) + C",
+          "correct": true
+        },
+        {
+          "latex": "-\\sin(e^{x}) + C",
+          "correct": false
+        },
+        {
+          "latex": "e^{x}\\sin(e^{x}) + C",
+          "correct": false
+        },
+        {
+          "latex": "\\cos(e^{x}) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Hacemos $u = e^{x}$, con $du = e^{x}\\,dx$. Obtenemos $\\int \\cos(u)\\,du = \\sin(u) + C = \\sin(e^{x}) + C$."
+    },
+    {
+      "id": "int-trig-04",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral: $\\int x\\sin(x^{2}+5)\\,dx$",
+      "options": [
+        {
+          "latex": "-\\frac{1}{2}\\cos(x^{2}+5) + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{2}\\cos(x^{2}+5) + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\cos(x^{2}+5) + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{1}{2}\\sin(x^{2}+5) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = x^{2}+5$, $du = 2x\\,dx \\implies x\\,dx = \\frac{du}{2}$. Entonces $\\frac{1}{2}\\int \\sin(u)\\,du = -\\frac{1}{2}\\cos(u) + C = -\\frac{1}{2}\\cos(x^{2}+5) + C$."
+    },
+    {
+      "id": "int-trig-05",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "medium",
+      "prompt": "Calcula la integral: $\\int \\frac{\\sin(\\ln x)}{x}\\,dx$",
+      "options": [
+        {
+          "latex": "-\\cos(\\ln x) + C",
+          "correct": true
+        },
+        {
+          "latex": "\\cos(\\ln x) + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{\\cos(\\ln x)}{x^{2}} + C",
+          "correct": false
+        },
+        {
+          "latex": "\\sin(\\ln x) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Hacemos $u = \\ln x$, entonces $du = \\frac{1}{x}\\,dx$. La integral se simplifica a $\\int \\sin(u)\\,du = -\\cos(u) + C = -\\cos(\\ln x) + C$."
+    },
+    {
+      "id": "int-trig-06",
+      "section": "calculo-integral",
+      "subtema": "inmediatas",
+      "law": "inmediatas",
+      "difficulty": "hard",
+      "prompt": "Calcula la integral: $\\int \\cos^{3}x\\,dx$",
+      "options": [
+        {
+          "latex": "\\sin x - \\frac{1}{3}\\sin^{3}x + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{4}\\cos^{4}x + C",
+          "correct": false
+        },
+        {
+          "latex": "\\sin x + \\frac{1}{3}\\sin^{3}x + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\sin x + \\frac{1}{3}\\sin^{3}x + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Separamos $\\cos^{3}x = (1 - \\sin^{2}x)\\cos x$. Integrando por partes o sustitución $u = \\sin x$, $du = \\cos x\\,dx$: $\\int \\cos x\\,dx - \\int u^{2}\\,du = \\sin x - \\frac{1}{3}\\sin^{3}x + C$."
+    },
+    {
+      "id": "int-par-01",
+      "section": "calculo-integral",
+      "subtema": "partes",
+      "law": "partes",
+      "difficulty": "medium",
+      "prompt": "Calcula por integración por partes: $\\int x\\cos x\\,dx$",
+      "options": [
+        {
+          "latex": "x\\sin x + \\cos x + C",
+          "correct": true
+        },
+        {
+          "latex": "x\\sin x - \\cos x + C",
+          "correct": false
+        },
+        {
+          "latex": "-x\\sin x + \\cos x + C",
+          "correct": false
+        },
+        {
+          "latex": "x\\cos x - \\sin x + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Elegimos $u = x \\implies du = dx$ y $dv = \\cos x\\,dx \\implies v = \\sin x$. Por la fórmula $uv - \\int v\\,du$: $x\\sin x - \\int \\sin x\\,dx = x\\sin x - (-\\cos x) + C = x\\sin x + \\cos x + C$."
+    },
+    {
+      "id": "int-par-02",
+      "section": "calculo-integral",
+      "subtema": "partes",
+      "law": "partes",
+      "difficulty": "hard",
+      "prompt": "Calcula por integración por partes: $\\int e^{3x}\\sin(2x)\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{1}{13}e^{3x}(3\\sin 2x - 2\\cos 2x) + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{13}e^{3x}(2\\sin 2x - 3\\cos 2x) + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{1}{5}e^{3x}(3\\sin 2x - 2\\cos 2x) + C",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{1}{13}e^{3x}(3\\sin 2x + 2\\cos 2x) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Aplicando integración por partes dos veces con $u = e^{3x}$ y resolviendo algebraicamente la integral cíclica resultante: $\\int e^{3x}\\sin 2x\\,dx = \\frac{4}{13}\\left(-\\frac{1}{2}e^{3x}\\cos 2x + \\frac{3}{4}e^{3x}\\sin 2x\\right) + C = \\frac{1}{13}e^{3x}(3\\sin 2x - 2\\cos 2x) + C$."
+    },
+    {
+      "id": "int-par-03",
+      "section": "calculo-integral",
+      "subtema": "partes",
+      "law": "partes",
+      "difficulty": "hard",
+      "prompt": "Calcula por integración por partes: $\\int \\operatorname{arccot}(x)\\,dx$",
+      "options": [
+        {
+          "latex": "x\\operatorname{arccot}(x) + \\frac{1}{2}\\ln(1+x^{2}) + C",
+          "correct": true
+        },
+        {
+          "latex": "x\\operatorname{arccot}(x) - \\frac{1}{2}\\ln(1+x^{2}) + C",
+          "correct": false
+        },
+        {
+          "latex": "\\operatorname{arccot}(x) + \\ln(1+x^{2}) + C",
+          "correct": false
+        },
+        {
+          "latex": "x\\operatorname{arccot}(x) + \\ln(1+x^{2}) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Tomamos $u = \\operatorname{arccot} x \\implies du = -\\frac{1}{1+x^{2}}dx$ y $dv = dx \\implies v = x$. Aplicando partes: $x\\operatorname{arccot} x - \\int x\\left(-\\frac{1}{1+x^{2}}\\right)dx = x\\operatorname{arccot} x + \\frac{1}{2}\\ln(1+x^{2}) + C$."
+    },
+    {
+      "id": "int-par-04",
+      "section": "calculo-integral",
+      "subtema": "partes",
+      "law": "partes",
+      "difficulty": "hard",
+      "prompt": "Calcula por integración por partes: $\\int \\arccos(x)\\,dx$",
+      "options": [
+        {
+          "latex": "x\\arccos(x) - \\sqrt{1-x^{2}} + C",
+          "correct": true
+        },
+        {
+          "latex": "x\\arccos(x) + \\sqrt{1-x^{2}} + C",
+          "correct": false
+        },
+        {
+          "latex": "x\\arccos(x) - \\frac{1}{\\sqrt{1-x^{2}}} + C",
+          "correct": false
+        },
+        {
+          "latex": "-x\\arccos(x) - \\sqrt{1-x^{2}} + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Elegimos $u = \\arccos x \\implies du = -\\frac{1}{\\sqrt{1-x^{2}}}dx$ y $dv = dx \\implies v = x$. Obtenemos $x\\arccos x - \\int \\frac{-x}{\\sqrt{1-x^{2}}}dx = x\\arccos x - \\sqrt{1-x^{2}} + C$."
+    },
+    {
+      "id": "int-par-05",
+      "section": "calculo-integral",
+      "subtema": "partes",
+      "law": "partes",
+      "difficulty": "hard",
+      "prompt": "Calcula por integración por partes: $\\int \\frac{x}{\\cos^{2}x}\\,dx$",
+      "options": [
+        {
+          "latex": "x\\tan x + \\ln|\\cos x| + C",
+          "correct": true
+        },
+        {
+          "latex": "x\\tan x - \\ln|\\cos x| + C",
+          "correct": false
+        },
+        {
+          "latex": "x\\sec x + \\ln|\\cos x| + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{x^{2}}{2\\cos^{2}x} + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Como $\\frac{1}{\\cos^{2}x} = \\sec^{2}x$, elegimos $u = x \\implies du = dx$ y $dv = \\sec^{2}x\\,dx \\implies v = \\tan x$. Entonces: $x\\tan x - \\int \\tan x\\,dx = x\\tan x + \\ln|\\cos x| + C$."
+    },
+    {
+      "id": "int-par-06",
+      "section": "calculo-integral",
+      "subtema": "partes",
+      "law": "partes",
+      "difficulty": "hard",
+      "prompt": "Calcula por integración por partes: $\\int x^{2}\\arctan(x)\\,dx$",
+      "options": [
+        {
+          "latex": "\\frac{1}{3}x^{3}\\arctan(x) - \\frac{1}{6}x^{2} + \\frac{1}{6}\\ln(1+x^{2}) + C",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{3}x^{3}\\arctan(x) - \\frac{1}{3}x^{2} + \\frac{1}{3}\\ln(1+x^{2}) + C",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{1}{3}x^{3}\\arctan(x) + \\frac{1}{6}x^{2} - \\frac{1}{6}\\ln(1+x^{2}) + C",
+          "correct": false
+        },
+        {
+          "latex": "x^{3}\\arctan(x) - \\frac{1}{6}x^{2} + \\frac{1}{6}\\ln(1+x^{2}) + C",
+          "correct": false
+        }
+      ],
+      "explanation": "Elegimos $u = \\arctan x \\implies du = \\frac{1}{1+x^{2}}dx$ y $dv = x^{2}\\,dx \\implies v = \\frac{x^{3}}{3}$. Obtenemos $\\frac{1}{3}x^{3}\\arctan x - \\frac{1}{3}\\int \\left(x - \\frac{x}{1+x^{2}}\\right)dx = \\frac{1}{3}x^{3}\\arctan x - \\frac{1}{6}x^{2} + \\frac{1}{6}\\ln(1+x^{2}) + C$."
+    },
+    {
+      "id": "der-cte-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función constante: $f(x) = 8$",
+      "options": [
+        {
+          "latex": "0",
+          "correct": true
+        },
+        {
+          "latex": "8",
+          "correct": false
+        },
+        {
+          "latex": "1",
+          "correct": false
+        },
+        {
+          "latex": "8x",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de derivación de una constante, $\\frac{d}{dx}[c] = 0$. Como $c = 8$, su derivada es $f'(x) = 0$."
+    },
+    {
+      "id": "der-cte-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada respecto a $x$: $y = -15$",
+      "options": [
+        {
+          "latex": "0",
+          "correct": true
+        },
+        {
+          "latex": "-15",
+          "correct": false
+        },
+        {
+          "latex": "-1",
+          "correct": false
+        },
+        {
+          "latex": "-15x",
+          "correct": false
+        }
+      ],
+      "explanation": "El número $-15$ es una constante independiente de $x$. Aplicando $\\frac{d}{dx}[c] = 0$, obtenemos $\\frac{dy}{dx} = 0$."
+    },
+    {
+      "id": "der-cte-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $f(x) = \\pi$",
+      "options": [
+        {
+          "latex": "0",
+          "correct": true
+        },
+        {
+          "latex": "\\pi",
+          "correct": false
+        },
+        {
+          "latex": "1",
+          "correct": false
+        },
+        {
+          "latex": "3.1416",
+          "correct": false
+        }
+      ],
+      "explanation": "El número $\\pi \\approx 3.14159$ es una constante real fija. Al no depender de la variable $x$, su derivada es $f'(x) = 0$."
+    },
+    {
+      "id": "der-cte-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada respecto a $x$: $y = \\sqrt{7}$",
+      "options": [
+        {
+          "latex": "0",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{1}{2\\sqrt{7}}",
+          "correct": false
+        },
+        {
+          "latex": "\\sqrt{7}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{7}{2}",
+          "correct": false
+        }
+      ],
+      "explanation": "Aunque contiene una raíz cuadrada, $\\sqrt{7}$ es un valor numérico fijo (constante) sin la variable $x$. Su derivada es $\\frac{dy}{dx} = 0$."
+    },
+    {
+      "id": "der-cte-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $f(x) = \\frac{3}{4}$",
+      "options": [
+        {
+          "latex": "0",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{3}{4}",
+          "correct": false
+        },
+        {
+          "latex": "1",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{3}{4}",
+          "correct": false
+        }
+      ],
+      "explanation": "La fracción $\\frac{3}{4}$ es una constante numérica. Aplicando la fórmula $\\frac{d}{dx}[c] = 0$, resulta $f'(x) = 0$."
+    },
+    {
+      "id": "der-cte-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada respecto a $x$: $y = e^{2}$",
+      "options": [
+        {
+          "latex": "0",
+          "correct": true
+        },
+        {
+          "latex": "2e",
+          "correct": false
+        },
+        {
+          "latex": "e^{2}",
+          "correct": false
+        },
+        {
+          "latex": "2e^{2}",
+          "correct": false
+        }
+      ],
+      "explanation": "El número de Euler $e$ es constante, de modo que $e^{2}$ es también una constante real fija. Su derivada respecto a $x$ es $\\frac{dy}{dx} = 0$."
+    },
+    {
+      "id": "der-var-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $f(x) = x$",
+      "options": [
+        {
+          "latex": "1",
+          "correct": true
+        },
+        {
+          "latex": "0",
+          "correct": false
+        },
+        {
+          "latex": "x",
+          "correct": false
+        },
+        {
+          "latex": "x^{2}",
+          "correct": false
+        }
+      ],
+      "explanation": "La derivada de la variable independiente con respecto a sí misma es $\\frac{d}{dx}[x] = 1$."
+    },
+    {
+      "id": "der-var-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $y = 5x$",
+      "options": [
+        {
+          "latex": "5",
+          "correct": true
+        },
+        {
+          "latex": "5x",
+          "correct": false
+        },
+        {
+          "latex": "1",
+          "correct": false
+        },
+        {
+          "latex": "0",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de múltiplo constante: $\\frac{dy}{dx} = 5 \\cdot \\frac{d}{dx}[x] = 5 \\cdot 1 = 5$."
+    },
+    {
+      "id": "der-var-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $f(x) = -x$",
+      "options": [
+        {
+          "latex": "-1",
+          "correct": true
+        },
+        {
+          "latex": "1",
+          "correct": false
+        },
+        {
+          "latex": "0",
+          "correct": false
+        },
+        {
+          "latex": "-x",
+          "correct": false
+        }
+      ],
+      "explanation": "Expresamos $-x$ como $-1 \\cdot x$. Aplicando la regla de la constante: $f'(x) = -1 \\cdot \\frac{d}{dx}[x] = -1 \\cdot 1 = -1$."
+    },
+    {
+      "id": "der-var-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $y = \\frac{x}{3}$",
+      "options": [
+        {
+          "latex": "\\frac{1}{3}",
+          "correct": true
+        },
+        {
+          "latex": "3",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{x}{3}",
+          "correct": false
+        },
+        {
+          "latex": "0",
+          "correct": false
+        }
+      ],
+      "explanation": "Reescribimos la función como $y = \\frac{1}{3}x$. Al derivar: $\\frac{dy}{dx} = \\frac{1}{3}\\cdot \\frac{d}{dx}[x] = \\frac{1}{3}\\cdot 1 = \\frac{1}{3}$."
+    },
+    {
+      "id": "der-var-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada respecto a $t$: $f(t) = 12t$",
+      "options": [
+        {
+          "latex": "12",
+          "correct": true
+        },
+        {
+          "latex": "12t",
+          "correct": false
+        },
+        {
+          "latex": "1",
+          "correct": false
+        },
+        {
+          "latex": "0",
+          "correct": false
+        }
+      ],
+      "explanation": "La variable independiente es $t$ y el coeficiente constante es $12$. Derivando: $f'(t) = 12 \\cdot \\frac{d}{dt}[t] = 12 \\cdot 1 = 12$."
+    },
+    {
+      "id": "der-var-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "easy",
+      "prompt": "Calcula la derivada de la función: $y = -\\frac{7}{2}x$",
+      "options": [
+        {
+          "latex": "-\\frac{7}{2}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{7}{2}",
+          "correct": false
+        },
+        {
+          "latex": "-7",
+          "correct": false
+        },
+        {
+          "latex": "-\\frac{7}{2}x",
+          "correct": false
+        }
+      ],
+      "explanation": "Identificamos la constante $c = -\\frac{7}{2}$. Derivando: $\\frac{dy}{dx} = -\\frac{7}{2}\\cdot \\frac{d}{dx}[x] = -\\frac{7}{2}\\cdot 1 = -\\frac{7}{2}$."
+    },
+    {
+      "id": "der-prod-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del producto: $f(x) = (3x^{2})(2x - 5)$",
+      "options": [
+        {
+          "latex": "18x^{2} - 30x",
+          "correct": true
+        },
+        {
+          "latex": "12x^{2} - 30x",
+          "correct": false
+        },
+        {
+          "latex": "18x^{2} + 30x",
+          "correct": false
+        },
+        {
+          "latex": "6x^{2} - 30x",
+          "correct": false
+        }
+      ],
+      "explanation": "Identificamos $u = 3x^{2} \\implies u' = 6x$ y $v = 2x-5 \\implies v' = 2$. Por la regla del producto $u'v + uv': (6x)(2x-5) + (3x^{2})(2) = 12x^{2} - 30x + 6x^{2} = 18x^{2} - 30x$."
+    },
+    {
+      "id": "der-prod-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del producto: $f(x) = (x^{2} + 1)(x^{3} - x)$",
+      "options": [
+        {
+          "latex": "5x^{4} - 1",
+          "correct": true
+        },
+        {
+          "latex": "5x^{4} + 2x^{2} - 1",
+          "correct": false
+        },
+        {
+          "latex": "6x^{4} - 1",
+          "correct": false
+        },
+        {
+          "latex": "5x^{4} - 2x^{2} + 1",
+          "correct": false
+        }
+      ],
+      "explanation": "Sea $u = x^{2}+1 \\implies u' = 2x$ y $v = x^{3}-x \\implies v' = 3x^{2}-1$. Aplicando la regla: $(2x)(x^{3}-x) + (x^{2}+1)(3x^{2}-1) = (2x^{4}-2x^{2}) + (3x^{4}+2x^{2}-1) = 5x^{4}-1$."
+    },
+    {
+      "id": "der-prod-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del producto: $f(x) = (4x - 3)(x^{2} + 2x)$",
+      "options": [
+        {
+          "latex": "12x^{2} + 10x - 6",
+          "correct": true
+        },
+        {
+          "latex": "12x^{2} + 16x - 6",
+          "correct": false
+        },
+        {
+          "latex": "8x^{2} + 10x - 6",
+          "correct": false
+        },
+        {
+          "latex": "12x^{2} - 10x - 6",
+          "correct": false
+        }
+      ],
+      "explanation": "Tomamos $u = 4x-3 \\implies u' = 4$ y $v = x^{2}+2x \\implies v' = 2x+2$. Entonces $f'(x) = 4(x^{2}+2x) + (4x-3)(2x+2) = (4x^{2}+8x) + (8x^{2}+2x-6) = 12x^{2} + 10x - 6$."
+    },
+    {
+      "id": "der-prod-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del producto: $f(x) = (x^{4} + 2)(x^{2} - 3)$",
+      "options": [
+        {
+          "latex": "6x^{5} - 12x^{3} + 4x",
+          "correct": true
+        },
+        {
+          "latex": "6x^{5} - 12x^{3} - 4x",
+          "correct": false
+        },
+        {
+          "latex": "8x^{5} - 12x^{3} + 4x",
+          "correct": false
+        },
+        {
+          "latex": "6x^{5} + 4x",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = x^{4}+2 \\implies u' = 4x^{3}$ y $v = x^{2}-3 \\implies v' = 2x$: $f'(x) = (4x^{3})(x^{2}-3) + (x^{4}+2)(2x) = 4x^{5} - 12x^{3} + 2x^{5} + 4x = 6x^{5} - 12x^{3} + 4x$."
+    },
+    {
+      "id": "der-prod-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del producto: $f(x) = x^{3}(5x^{2} - 2)$",
+      "options": [
+        {
+          "latex": "25x^{4} - 6x^{2}",
+          "correct": true
+        },
+        {
+          "latex": "15x^{4} - 6x^{2}",
+          "correct": false
+        },
+        {
+          "latex": "25x^{4} + 6x^{2}",
+          "correct": false
+        },
+        {
+          "latex": "20x^{4} - 6x^{2}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = x^{3} \\implies u' = 3x^{2}$ y $v = 5x^{2}-2 \\implies v' = 10x$: $f'(x) = (3x^{2})(5x^{2}-2) + (x^{3})(10x) = 15x^{4} - 6x^{2} + 10x^{4} = 25x^{4} - 6x^{2}$."
+    },
+    {
+      "id": "der-prod-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del producto: $f(x) = (5x^{3} - x)(3x + 2)$",
+      "options": [
+        {
+          "latex": "60x^{3} + 30x^{2} - 6x - 2",
+          "correct": true
+        },
+        {
+          "latex": "60x^{3} + 30x^{2} - 3x - 2",
+          "correct": false
+        },
+        {
+          "latex": "45x^{3} + 30x^{2} - 6x - 2",
+          "correct": false
+        },
+        {
+          "latex": "60x^{3} - 30x^{2} - 6x - 2",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = 5x^{3}-x \\implies u' = 15x^{2}-1$ y $v = 3x+2 \\implies v' = 3$: $f'(x) = (15x^{2}-1)(3x+2) + (5x^{3}-x)(3) = (45x^{3} + 30x^{2} - 3x - 2) + (15x^{3} - 3x) = 60x^{3} + 30x^{2} - 6x - 2$."
+    },
+    {
+      "id": "der-coc-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del cociente: $f(x) = \\frac{2x+3}{x-1}$",
+      "options": [
+        {
+          "latex": "\\frac{-5}{(x-1)^{2}}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{5}{(x-1)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{2}{(x-1)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{-1}{(x-1)^{2}}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = 2x+3 \\implies u' = 2$ y $v = x-1 \\implies v' = 1$: $f'(x) = \\frac{2(x-1) - (2x+3)(1)}{(x-1)^{2}} = \\frac{2x - 2 - 2x - 3}{(x-1)^{2}} = \\frac{-5}{(x-1)^{2}}$."
+    },
+    {
+      "id": "der-coc-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del cociente: $f(x) = \\frac{x^{2}}{x+2}$",
+      "options": [
+        {
+          "latex": "\\frac{x^{2} + 4x}{(x+2)^{2}}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{x^{2} - 4x}{(x+2)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{2x}{(x+2)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{x^{2} + 4}{(x+2)^{2}}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = x^{2} \\implies u' = 2x$ y $v = x+2 \\implies v' = 1$: $f'(x) = \\frac{2x(x+2) - (x^{2})(1)}{(x+2)^{2}} = \\frac{2x^{2} + 4x - x^{2}}{(x+2)^{2}} = \\frac{x^{2}+4x}{(x+2)^{2}}$."
+    },
+    {
+      "id": "der-coc-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del cociente: $f(x) = \\frac{3x-1}{2x+5}$",
+      "options": [
+        {
+          "latex": "\\frac{17}{(2x+5)^{2}}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{13}{(2x+5)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{-17}{(2x+5)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{3}{(2x+5)^{2}}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = 3x-1 \\implies u' = 3$ y $v = 2x+5 \\implies v' = 2$: $f'(x) = \\frac{3(2x+5) - (3x-1)(2)}{(2x+5)^{2}} = \\frac{6x+15 - 6x + 2}{(2x+5)^{2}} = \\frac{17}{(2x+5)^{2}}$."
+    },
+    {
+      "id": "der-coc-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del cociente: $f(x) = \\frac{x^{2}+1}{x^{2}-1}$",
+      "options": [
+        {
+          "latex": "\\frac{-4x}{(x^{2}-1)^{2}}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{4x}{(x^{2}-1)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{-2x}{(x^{2}-1)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{-4}{(x^{2}-1)^{2}}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = x^{2}+1 \\implies u' = 2x$ y $v = x^{2}-1 \\implies v' = 2x$: $f'(x) = \\frac{2x(x^{2}-1) - (x^{2}+1)(2x)}{(x^{2}-1)^{2}} = \\frac{2x[(x^{2}-1)-(x^{2}+1)]}{(x^{2}-1)^{2}} = \\frac{2x(-2)}{(x^{2}-1)^{2}} = \\frac{-4x}{(x^{2}-1)^{2}}$."
+    },
+    {
+      "id": "der-coc-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del cociente: $f(x) = \\frac{5x}{x^{2}+2}$",
+      "options": [
+        {
+          "latex": "\\frac{10 - 5x^{2}}{(x^{2}+2)^{2}}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{5x^{2} + 10}{(x^{2}+2)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{5 - 10x^{2}}{(x^{2}+2)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{10 - 5x}{(x^{2}+2)^{2}}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = 5x \\implies u' = 5$ y $v = x^{2}+2 \\implies v' = 2x$: $f'(x) = \\frac{5(x^{2}+2) - (5x)(2x)}{(x^{2}+2)^{2}} = \\frac{5x^{2} + 10 - 10x^{2}}{(x^{2}+2)^{2}} = \\frac{10 - 5x^{2}}{(x^{2}+2)^{2}}$."
+    },
+    {
+      "id": "der-coc-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función aplicando la regla del cociente: $f(x) = \\frac{1-x}{1+x}$",
+      "options": [
+        {
+          "latex": "\\frac{-2}{(1+x)^{2}}",
+          "correct": true
+        },
+        {
+          "latex": "\\frac{2}{(1+x)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{-2x}{(1+x)^{2}}",
+          "correct": false
+        },
+        {
+          "latex": "\\frac{-1}{(1+x)^{2}}",
+          "correct": false
+        }
+      ],
+      "explanation": "Con $u = 1-x \\implies u' = -1$ y $v = 1+x \\implies v' = 1$: $f'(x) = \\frac{-1(1+x) - (1-x)(1)}{(1+x)^{2}} = \\frac{-1 - x - 1 + x}{(1+x)^{2}} = \\frac{-2}{(1+x)^{2}}$."
+    },
+    {
+      "id": "der-trig-01",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función trigonométrica: $f(x) = \\sin(4x)$",
+      "options": [
+        {
+          "latex": "4\\cos(4x)",
+          "correct": true
+        },
+        {
+          "latex": "-4\\cos(4x)",
+          "correct": false
+        },
+        {
+          "latex": "\\cos(4x)",
+          "correct": false
+        },
+        {
+          "latex": "4\\sin(4x)",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de la cadena: $\\frac{d}{dx}[\\sin(u)] = u'\\cdot \\cos(u)$. Con $u = 4x \\implies u' = 4$: $f'(x) = 4\\cos(4x)$."
+    },
+    {
+      "id": "der-trig-02",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función trigonométrica: $f(x) = \\cos(3x^{2})$",
+      "options": [
+        {
+          "latex": "-6x\\sin(3x^{2})",
+          "correct": true
+        },
+        {
+          "latex": "6x\\sin(3x^{2})",
+          "correct": false
+        },
+        {
+          "latex": "-6x\\cos(3x^{2})",
+          "correct": false
+        },
+        {
+          "latex": "-3x\\sin(3x^{2})",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de la cadena: $\\frac{d}{dx}[\\cos(u)] = -u'\\cdot \\sin(u)$. Con $u = 3x^{2} \\implies u' = 6x$: $f'(x) = -(6x)\\sin(3x^{2}) = -6x\\sin(3x^{2})$."
+    },
+    {
+      "id": "der-trig-03",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función trigonométrica: $f(x) = \\tan(5x+2)$",
+      "options": [
+        {
+          "latex": "5\\sec^{2}(5x+2)",
+          "correct": true
+        },
+        {
+          "latex": "-5\\sec^{2}(5x+2)",
+          "correct": false
+        },
+        {
+          "latex": "\\sec^{2}(5x+2)",
+          "correct": false
+        },
+        {
+          "latex": "5\\tan^{2}(5x+2)",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de la cadena: $\\frac{d}{dx}[\\tan(u)] = u'\\cdot \\sec^{2}(u)$. Con $u = 5x+2 \\implies u' = 5$: $f'(x) = 5\\sec^{2}(5x+2)$."
+    },
+    {
+      "id": "der-trig-04",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "hard",
+      "prompt": "Deriva la función trigonométrica: $f(x) = \\sec(x^{3})$",
+      "options": [
+        {
+          "latex": "3x^{2}\\sec(x^{3})\\tan(x^{3})",
+          "correct": true
+        },
+        {
+          "latex": "3x^{2}\\sec^{2}(x^{3})",
+          "correct": false
+        },
+        {
+          "latex": "-3x^{2}\\sec(x^{3})\\tan(x^{3})",
+          "correct": false
+        },
+        {
+          "latex": "x^{3}\\sec(x^{3})\\tan(x^{3})",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de la cadena: $\\frac{d}{dx}[\\sec(u)] = u'\\cdot \\sec(u)\\tan(u)$. Con $u = x^{3} \\implies u' = 3x^{2}$: $f'(x) = 3x^{2}\\sec(x^{3})\\tan(x^{3})$."
+    },
+    {
+      "id": "der-trig-05",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "medium",
+      "prompt": "Deriva la función trigonométrica: $f(x) = \\csc(2x)$",
+      "options": [
+        {
+          "latex": "-2\\csc(2x)\\cot(2x)",
+          "correct": true
+        },
+        {
+          "latex": "2\\csc(2x)\\cot(2x)",
+          "correct": false
+        },
+        {
+          "latex": "-2\\csc^{2}(2x)",
+          "correct": false
+        },
+        {
+          "latex": "-\\csc(2x)\\cot(2x)",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de la cadena: $\\frac{d}{dx}[\\csc(u)] = -u'\\cdot \\csc(u)\\cot(u)$. Con $u = 2x \\implies u' = 2$: $f'(x) = -2\\csc(2x)\\cot(2x)$."
+    },
+    {
+      "id": "der-trig-06",
+      "section": "calculo-diferencial",
+      "subtema": "derivacion",
+      "law": "derivacion",
+      "difficulty": "hard",
+      "prompt": "Deriva la función trigonométrica: $f(x) = \\cot(x^{2}-1)$",
+      "options": [
+        {
+          "latex": "-2x\\csc^{2}(x^{2}-1)",
+          "correct": true
+        },
+        {
+          "latex": "2x\\csc^{2}(x^{2}-1)",
+          "correct": false
+        },
+        {
+          "latex": "-2x\\cot^{2}(x^{2}-1)",
+          "correct": false
+        },
+        {
+          "latex": "-\\csc^{2}(x^{2}-1)",
+          "correct": false
+        }
+      ],
+      "explanation": "Por la regla de la cadena: $\\frac{d}{dx}[\\cot(u)] = -u'\\cdot \\csc^{2}(u)$. Con $u = x^{2}-1 \\implies u' = 2x$: $f'(x) = -2x\\csc^{2}(x^{2}-1)$."
+    }
+  ]
+}
