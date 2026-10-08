@@ -96,6 +96,9 @@ export async function getProfile(userId) {
 export async function signUp(email, password, fullName = '', termsVersion = '') {
   const sb = getSupabase();
   if (!sb) return { user: null, error: new Error('SUPABASE_NOT_READY') };
+  if (!fullName || fullName.trim().length < 2) {
+    return { user: null, error: new Error('Nombre completo obligatorio.') };
+  }
   const { data, error } = await sb.auth.signUp({ email, password });
   if (error) return { user: null, error };
 

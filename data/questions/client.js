@@ -129,7 +129,7 @@ export async function listQuestionsRange(filter = {}) {
   if (filter.subtema_id) q = q.eq('subtema_id', filter.subtema_id);
   if (filter.law_id) q = q.eq('law_id', filter.law_id);
   if (filter.difficulty) q = q.eq('difficulty', filter.difficulty);
-  if (filter.search) q = q.ilike('prompt', '%s', filter.search);
+  if (filter.search) q = q.ilike('prompt', `%${filter.search}%`);
   if (Number.isFinite(filter.from) && Number.isFinite(filter.to)) {
     q = q.range(filter.from, filter.to);
   }

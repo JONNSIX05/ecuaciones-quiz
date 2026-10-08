@@ -1506,8 +1506,10 @@ body.modal-open {
 .auth-msg { min-height: 1.1rem; font-size: 0.88rem; text-align: center; margin-top: 0.2rem; }
 .auth-msg.auth-ok { color: var(--correct); }
 .auth-msg.auth-err { color: var(--wrong); }
+.auth-field .req { color: var(--wrong); font-style: normal; margin-left: 2px; font-weight: 700; }
+.auth-field input:invalid:not(:placeholder-shown) { border-color: var(--wrong); }
 
-/* ---------- Admin questions: filtros + tabla + paginación ---------- */
+/* ---------- Admin questions: filtros + tabla + paginaciï¿½n ---------- */
 .questions-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

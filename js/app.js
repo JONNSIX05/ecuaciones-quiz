@@ -959,8 +959,8 @@ function showAuthForm() {
           <input type="password" id="auth-password" required minlength="6" autocomplete="current-password">
         </label>
         <label class="auth-field" id="auth-name-field" hidden>
-          <span>Nombre (opcional)</span>
-          <input type="text" id="auth-name" autocomplete="name">
+          <span>Nombre completo <em class="req" aria-hidden="true">*</em></span>
+          <input type="text" id="auth-name" autocomplete="name" required minlength="2" maxlength="80">
         </label>
         <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Entrar</button>
         <div id="auth-msg" class="auth-msg" role="status"></div>
@@ -992,6 +992,12 @@ function showAuthForm() {
     const password = view.querySelector('#auth-password').value;
     const fullName = view.querySelector('#auth-name').value.trim();
     const mode = tabRegister.classList.contains('is-active') ? 'register' : 'login';
+    if (mode === 'register' && !fullName) {
+      msgEl.textContent = 'Ingresa tu nombre completo.';
+      msgEl.className = 'auth-msg auth-err';
+      view.querySelector('#auth-name').focus();
+      return;
+    }
     if (!email || !password) {
       msgEl.textContent = 'Completa correo y contraseña.';
       msgEl.className = 'auth-msg auth-err';

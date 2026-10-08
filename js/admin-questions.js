@@ -175,16 +175,17 @@ async function loadQuestions() {
       difficulty: state.filters.difficulty || null,
       search: state.filters.search || null,
     });
-    target.innerHTML = renderQuestions(res.renderBody);
+    currentRows = res.rows || [];
+    target.innerHTML = renderQuestions(res);
     bindPagination();
-    bindRowEvents();
+    bindRowEvents(currentRows);
   } catch (e) {
     target.innerHTML = `<div class="alert-warn"><strong>Error:</strong> ${escapeHtml(e.message)}</div>`;
   }
 }
 
-function renderQuestions({ rows, count }) {
-  if (count === 0) {
+function renderQuestions({ rows, count, from }) {
+  if (count === 0 || !rows || rows.length === 0) {
     return '<p class="admin-empty">No hay preguntas (con esos filtros).</p>';
   }
   const safeRows = rows.map(r => {
@@ -210,8 +211,10 @@ function renderQuestions({ rows, count }) {
   }).join('');
 
   const totalPages = Math.max(1, Math.ceil(count / state.pageSize));
+  const start = (from ?? 0) + 1;
+  const end = Math.min(start + rows.length - 1, count);
   return `
-    <p class="admin-hint">Mostrando ${state.from}–${Math.min(state.from + state.pageSize, count)} de ${count} (${totalPages} páginas).</p>
+    <p class="admin-hint">Mostrando ${start}–${end} de ${count} (${totalPages} páginas).</p>
     <div class="questions-table-wrap">
       <table class="questions-table">
         <thead>
@@ -238,7 +241,7 @@ function bindPagination() {
   });
 }
 
-function bindRowEvents() {
+function bindRowEvents(rows) {
   const body = document.querySelector('#admin-questions-body');
   body.querySelectorAll('button[data-action]').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -249,8 +252,8 @@ function bindRowEvents() {
         return;
       }
       if (action === 'edit') {
-        const all = currentRows || [];
-        const row = all.find(r => r.id === id);
+        const row = (rows || currentRows || []).find(r => r.id === id);
+        if (!row) { alert('No se encontró la fila en memoria. Recarga la página.'); return; }
         openEditor(body, row);
         return;
       }
