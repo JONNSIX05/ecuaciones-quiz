@@ -1,44 +1,51 @@
 /* ============================================================
    base.css — Reset, variables, tipografía y layout base
-   Estética: "cuaderno de matemáticas" (tinta sobre papel)
+   Identidad visual institucional: UNACH (Azul, Oro y Blanco)
    ============================================================ */
 
 :root {
-  /* Paleta tinta-sobre-papel */
-  --paper: #f4efe4;
-  --paper-deep: #ece5d3;
-  --surface: #fdfaf3;
-  --ink: #21241f;
-  --ink-soft: #4c4f47;
-  --muted: #7a7a70;
+  /* Paleta institucional UNACH */
+  --unach-navy-900: #041548;
+  --unach-navy: #132652;
+  --unach-header: #00294f;
+  --unach-blue: #0071db;
+  --unach-blue-bright: #0093ff;
+  --unach-gold: #c59b27;
+  --unach-gold-light: #fdf8ea;
+  --unach-gold-border: #e8ce7d;
 
-  --accent: #1d5c63;          /* teal tinta */
-  --accent-strong: #14474d;
-  --accent-soft: #dbeaeb;
+  /* Compatibilidad y superficie */
+  --paper: #f8fafc;
+  --paper-deep: #eef2f6;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --muted: #64748b;
+
+  --accent: #132652;
+  --accent-strong: #041548;
+  --accent-soft: #e2edfa;
   --accent-ink: #ffffff;
 
-  --line: #e0d8c4;
-  --line-strong: #cfc5ab;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
 
-  --correct: #2e7d32;
-  --correct-bg: #e7f3e8;
-  --wrong: #b52b24;
-  --wrong-bg: #fae7e5;
-  --focus: #b8860b;
+  --correct: #16a34a;
+  --correct-bg: #f0fdf4;
+  --wrong: #dc2626;
+  --wrong-bg: #fef2f2;
+  --focus: #0071db;
 
-  --radius: 12px;
-  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-sm: 6px;
 
-  --font-display: "Georgia", "Iowan Old Style", "Palatino Linotype",
-    "Book Antiqua", "Times New Roman", serif;
-  --font-body: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
-  --font-mono: "Courier New", Courier, monospace;
+  --font-display: "Montserrat", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-body: "Open Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
 
-  --shadow-sm: 0 1px 2px rgba(33, 36, 31, 0.06),
-    0 2px 6px rgba(33, 36, 31, 0.05);
-  --shadow-md: 0 4px 14px rgba(33, 36, 31, 0.08),
-    0 10px 30px rgba(33, 36, 31, 0.06);
-  --shadow-lg: 0 12px 40px rgba(33, 36, 31, 0.14);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
 }
 
 * {
@@ -55,11 +62,8 @@ body {
   font-family: var(--font-body);
   color: var(--ink);
   background-color: var(--paper);
-  background-image: radial-gradient(
-      rgba(33, 36, 31, 0.028) 1px,
-      transparent 1px
-    );
-  background-size: 22px 22px;
+  background-image: radial-gradient(rgba(19, 38, 82, 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
   line-height: 1.55;
   min-height: 100vh;
   display: flex;
@@ -67,11 +71,13 @@ body {
 }
 
 a {
-  color: var(--accent);
+  color: var(--unach-blue);
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 a:hover {
+  color: var(--unach-navy);
   text-decoration: underline;
 }
 
@@ -80,13 +86,14 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display);
-  line-height: 1.2;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  color: var(--unach-navy);
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 h1 {
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
 }
 
 h2 {
@@ -119,41 +126,107 @@ button {
 /* Marco general de la app */
 .app-shell {
   width: 100%;
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  max-width: 960px;
+  margin: 1.8rem auto 0;
+  padding: 0 1rem 4rem;
   flex: 1;
 }
 
+/* Encabezado Institucional */
 .site-header {
-  text-align: center;
-  padding: 1.5rem 0 0.5rem;
+  background: var(--unach-header);
+  border-bottom: 3.5px solid var(--unach-gold);
+  margin: 0;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  box-shadow: var(--shadow-sm);
 }
 
-.site-header .kicker {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.18em;
+.site-header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.brand:hover {
+  text-decoration: none;
+  opacity: 0.95;
+}
+
+.brand-crest {
+  background: var(--unach-gold);
+  color: var(--unach-navy-900);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 0.4rem;
+  color: #cbd5e1;
+  font-weight: 600;
 }
 
-.site-header .tagline {
-  color: var(--muted);
-  margin-top: 0.5rem;
-  font-size: 1rem;
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
 }
 
-.divider {
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--line-strong),
-    transparent
-  );
-  margin: 1.2rem 0 1.6rem;
+/* Barra de usuario global en header */
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+}
+
+.user-email {
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 640px) {
+  .site-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .user-bar {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
 }
 
 /* Tarjeta base */
@@ -161,6 +234,6 @@ button {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: 1.8rem;
   box-shadow: var(--shadow-sm);
 }

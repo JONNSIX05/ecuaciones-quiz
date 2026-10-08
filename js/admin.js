@@ -4,7 +4,6 @@
 
 import { getSupabase } from './supabase.js';
 import { isAdmin, getUser, signOut } from './auth.js';
-import { renderAdminQuestions } from './admin-questions.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -43,7 +42,7 @@ function sectionLabel(id) {
 }
 
 /**
- * Renderiza el dashboard dentro de `view`.
+ * Renderiza el dashboard del profesor dentro de `view`.
  * @param {HTMLElement} view
  */
 export async function renderAdminDashboard(view) {
@@ -52,7 +51,7 @@ export async function renderAdminDashboard(view) {
       <div class="back-row"><a class="back-link" href="#/">← Volver al menú</a></div>
       <div class="admin-card">
         <h2>Acceso restringido</h2>
-        <p>Necesitas permisos de administrador para acceder a este panel.</p>
+        <p>Necesitas permisos de administrador para acceder a este panel docente.</p>
         <p class="admin-hint">Si eres el profesor, ejecuta en Supabase SQL Editor:</p>
         <pre class="admin-code">update public.profiles
 set is_admin = true
@@ -81,23 +80,28 @@ where email = 'TU_EMAIL';</pre>
     <section class="admin-card">
       <header class="admin-head">
         <div>
-          <h2>Dashboard del profesor</h2>
-          <p class="admin-sub">Sesión iniciada como ${escapeHtml(user?.email ?? '')}</p>
+          <h2>Panel Docente UNACH</h2>
+          <p class="admin-sub">Profesor: ${escapeHtml(user?.email ?? '')}</p>
         </div>
-        <div class="d-flex" style="display:flex;gap:.5rem;align-items:center;">
-          <button id="admin-questions-btn" class="btn btn-soft btn-small" type="button">Gestionar preguntas</button>
+        <div class="d-flex" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <a href="#/admin/preguntas" class="btn btn-gold btn-small">Gestionar preguntas</a>
           <button id="admin-logout" class="btn btn-soft btn-small" type="button">Cerrar sesión</button>
         </div>
       </header>
-      <div id="admin-body"><p class="admin-loading">Cargando datos…</p></div>
+
+      <nav class="admin-nav-tabs" role="tablist">
+        <button data-tab="resumen" class="admin-nav-tab is-active" type="button" role="tab">Resumen general</button>
+        <button data-tab="alumnos" class="admin-nav-tab" type="button" role="tab">Alumnos</button>
+        <button data-tab="temas" class="admin-nav-tab" type="button" role="tab">Rendimiento por tema</button>
+      </nav>
+
+      <div id="admin-body"><p class="admin-loading">Cargando métricas y alumnos…</p></div>
     </section>`;
+
   view.querySelector('#admin-logout')?.addEventListener('click', async () => {
     await signOut();
-    window.location.hash = '#/';
+    window.location.hash = '#/login';
     window.location.reload();
-  });
-  view.querySelector('#admin-questions-btn')?.addEventListener('click', () => {
-    renderAdminQuestions(view);
   });
 
   try {
@@ -111,20 +115,22 @@ where email = 'TU_EMAIL';</pre>
     const quizAttempts = quizRes.data ?? [];
     const practiceAttempts = practiceRes.data ?? [];
 
-    view.querySelector('#admin-body').innerHTML = renderBody(profiles, quizAttempts, practiceAttempts);
+    renderDashboardContent(view, profiles, quizAttempts, practiceAttempts);
   } catch (err) {
     view.querySelector('#admin-body').innerHTML =
       `<div class="alert-warn"><strong>Error al cargar:</strong> ${escapeHtml(err.message)}<br>
-      <small>Posible mismatch de schema. Revisa que las columnas coincidan con las esperadas.</small></div>`;
+      <small>Posible error de conexión o esquema en Supabase.</small></div>`;
   }
 }
 
-function renderBody(profiles, quizAttempts, practiceAttempts) {
+function renderDashboardContent(view, profiles, quizAttempts, practiceAttempts) {
+  const container = view.querySelector('#admin-body');
+  if (!container) return;
+
   const now = Date.now();
   const INACTIVE_DAYS = 14;
   const AT_RISK_PCT = 60;
 
-  // Mapa de perfil por user_id (para nombres)
   const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
 
   // Agregaciones por alumno
@@ -142,28 +148,101 @@ function renderBody(profiles, quizAttempts, practiceAttempts) {
     byUser.set(a.user_id, cur);
   }
 
-  // Ranking + Riesgo
-  const ranking = [];
-  for (const [uid, agg] of byUser.entries()) {
-    const p = profileMap.get(uid);
+  // Lista de alumnos completa (a partir de profiles, excluyendo administradores)
+  const students = [];
+  for (const p of profiles) {
+    if (p.is_admin) continue;
+    const agg = byUser.get(p.user_id) || {
+      attempts: 0, correct: 0, total: 0, lastAt: null, lawSet: new Set(),
+    };
     const avg = agg.total ? (agg.correct / agg.total) * 100 : 0;
     const daysSince = agg.lastAt ? (now - agg.lastAt) / 86400000 : Infinity;
-    ranking.push({
-      email: p?.email || '(sin email)',
-      name: p?.full_name || '',
+    students.push({
+      userId: p.user_id,
+      email: p.email || '(sin email)',
+      name: p.full_name || 'Sin nombre registrado',
       attempts: agg.attempts,
       correct: agg.correct,
       total: agg.total,
       avg,
       lastAt: agg.lastAt ? new Date(agg.lastAt).toISOString() : null,
-      inactive: daysSince > INACTIVE_DAYS,
-      atRisk: avg < AT_RISK_PCT,
+      inactive: agg.attempts > 0 && daysSince > INACTIVE_DAYS,
+      neverStarted: agg.attempts === 0,
+      atRisk: agg.attempts > 0 && avg < AT_RISK_PCT,
     });
   }
-  ranking.sort((a, b) => b.avg - a.avg);
-  const atRisk = ranking.filter((r) => r.atRisk || r.inactive).sort((a, b) => a.avg - b.avg);
 
-  // Desglose por sección/ley
+  // Si hay intentos de usuarios que no estén en profiles por alguna razón:
+  for (const [uid, agg] of byUser.entries()) {
+    if (!students.some((s) => s.userId === uid)) {
+      const p = profileMap.get(uid);
+      if (p?.is_admin) continue;
+      const avg = agg.total ? (agg.correct / agg.total) * 100 : 0;
+      const daysSince = agg.lastAt ? (now - agg.lastAt) / 86400000 : Infinity;
+      students.push({
+        userId: uid,
+        email: p?.email || '(sin email)',
+        name: p?.full_name || 'Sin nombre registrado',
+        attempts: agg.attempts,
+        correct: agg.correct,
+        total: agg.total,
+        avg,
+        lastAt: agg.lastAt ? new Date(agg.lastAt).toISOString() : null,
+        inactive: daysSince > INACTIVE_DAYS,
+        neverStarted: false,
+        atRisk: avg < AT_RISK_PCT,
+      });
+    }
+  }
+
+  students.sort((a, b) => b.avg - a.avg || b.attempts - a.attempts);
+
+  const atRiskStudents = students.filter((s) => s.atRisk || s.inactive);
+
+  // Totales y KPIs
+  const totalQuizScore = quizAttempts.reduce((acc, a) => acc + (Number(a.score) || 0), 0);
+  const totalQuizQuestions = quizAttempts.reduce((acc, a) => acc + (Number(a.total) || 0), 0);
+  const globalAvg = totalQuizQuestions ? Math.round((totalQuizScore / totalQuizQuestions) * 100) : 0;
+
+  const practiceTotal = practiceAttempts.length;
+  const practiceCorrect = practiceAttempts.filter((a) => a.correct).length;
+  const practiceAvg = practiceTotal ? Math.round((practiceCorrect / practiceTotal) * 100) : 0;
+
+  // Agrupación por sección
+  const sectionAgg = {};
+  for (const a of quizAttempts) {
+    const sec = a.section_id || 'sin-seccion';
+    const cur = sectionAgg[sec] || { attempts: 0, correct: 0, total: 0 };
+    cur.attempts += 1;
+    cur.correct += Number(a.score) || 0;
+    cur.total += Number(a.total) || 0;
+    sectionAgg[sec] = cur;
+  }
+  const bySectionRows = Object.entries(sectionAgg).map(([sec, v]) => {
+    const pct = v.total ? Math.round((v.correct / v.total) * 100) : 0;
+    return [escapeHtml(sectionLabel(sec)), v.attempts, `${pct}%`];
+  });
+
+  // Últimos 10 intentos
+  const recentAttempts = quizAttempts.slice(0, 10);
+  const recentHtml = recentAttempts.length === 0
+    ? '<p class="admin-empty">Sin intentos de quiz registrados aún.</p>'
+    : renderTable(
+        ['Alumno', 'Correo', 'Sección', 'Ley / Subtema', 'Puntaje', 'Fecha'],
+        recentAttempts.map((a) => {
+          const profile = profileMap.get(a.user_id);
+          return [
+            escapeHtml(profile?.full_name || '–'),
+            escapeHtml(profile?.email || '(sin email)'),
+            escapeHtml(sectionLabel(a.section_id || '')),
+            escapeHtml(a.law_name || a.law_id || ''),
+            `${a.score}/${a.total}`,
+            fmtDate(a.created_at),
+          ];
+        })
+      );
+
+  // Desglose por leyes
   const byLaw = new Map();
   for (const a of quizAttempts) {
     const key = `${a.section_id}::${a.law_id}`;
@@ -181,7 +260,7 @@ function renderBody(profiles, quizAttempts, practiceAttempts) {
     return (a.lawName || '').localeCompare(b.lawName || '');
   });
 
-  // Práctica libre — top temas fallados
+  // Práctica libre agregada
   const practiceAgg = new Map();
   for (const a of practiceAttempts) {
     const cur = practiceAgg.get(a.topic) || { topic: a.topic, total: 0, correct: 0 };
@@ -192,128 +271,165 @@ function renderBody(profiles, quizAttempts, practiceAttempts) {
   const practiceRows = [...practiceAgg.values()]
     .sort((a, b) => (b.total - b.correct) - (a.total - a.correct));
 
-  const totals = {
-    students: byUser.size,
-    attempts: quizAttempts.length,
-    avg: (() => {
-      let c = 0, t = 0;
-      for (const a of quizAttempts) { c += Number(a.score) || 0; t += Number(a.total) || 0; }
-      return t ? Math.round((c / t) * 100) : 0;
-    })(),
-    practiceTotal: practiceAttempts.length,
-    practiceCorrect: practiceAttempts.filter((a) => a.correct).length,
-    bySection: {},
+  // Render inicial de las 3 pestañas
+  container.innerHTML = `
+    <!-- TAB 1: RESUMEN -->
+    <div id="tab-pane-resumen" class="admin-tab-pane">
+      <section class="kpi-row">
+        <div class="kpi-card">
+          <span class="kpi-num">${students.length}</span>
+          <span class="kpi-label">alumnos inscritos</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-num">${quizAttempts.length}</span>
+          <span class="kpi-label">intentos de quiz</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-num">${globalAvg}%</span>
+          <span class="kpi-label">promedio global</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-num">${practiceTotal}</span>
+          <span class="kpi-label">práctica libre (${practiceAvg}% aciertos)</span>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Actividad por sección</h3>
+        ${bySectionRows.length === 0
+          ? '<p class="admin-empty">Sin actividad registrada en las secciones.</p>'
+          : renderTable(['Sección', 'Intentos', 'Tasa de acierto'], bySectionRows)}
+      </section>
+
+      <section class="admin-section">
+        <h3>Últimos 10 intentos</h3>
+        ${recentHtml}
+      </section>
+    </div>
+
+    <!-- TAB 2: ALUMNOS -->
+    <div id="tab-pane-alumnos" class="admin-tab-pane" style="display:none;">
+      <section class="admin-section">
+        <h3>Alumnos en riesgo (promedio &lt; ${AT_RISK_PCT}% o inactivos más de ${INACTIVE_DAYS} días)</h3>
+        ${atRiskStudents.length === 0
+          ? '<p class="admin-empty">Sin alumnos en riesgo.</p>'
+          : renderTable(
+              ['Nombre', 'Correo', 'Intentos', 'Promedio', 'Último intento', 'Diagnóstico'],
+              atRiskStudents.map((r) => [
+                escapeHtml(r.name),
+                escapeHtml(r.email),
+                r.attempts,
+                r.attempts ? `${Math.round(r.avg)}%` : '–',
+                fmtDate(r.lastAt),
+                `<span class="pill ${r.atRisk ? 'pill-danger' : 'pill-warn'}">${r.atRisk ? 'Bajo rendimiento' : 'Inactivo'}</span>`,
+              ])
+            )}
+      </section>
+
+      <section class="admin-section">
+        <div class="admin-title-row" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;">
+          <h3>Directorio de Alumnos (${students.length})</h3>
+          <input type="search" id="admin-student-search" placeholder="Buscar por nombre o correo…" style="max-width:320px;padding:.5rem .75rem;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--paper);font-size:.9rem;">
+        </div>
+        <div id="admin-students-table-wrap">
+          ${renderStudentsTable(students)}
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 3: RENDIMIENTO POR TEMA -->
+    <div id="tab-pane-temas" class="admin-tab-pane" style="display:none;">
+      <section class="admin-section">
+        <h3>Desglose de resultados por ley y subtema</h3>
+        ${lawRows.length === 0
+          ? '<p class="admin-empty">Sin cuestionarios respondidos aún.</p>'
+          : renderTable(
+              ['Sección', 'Tema / Ley', 'Intentos', 'Aciertos / Total', 'Tasa de acierto'],
+              lawRows.map((r) => [
+                escapeHtml(sectionLabel(r.sectionId)),
+                escapeHtml(r.lawName || r.lawId),
+                r.attempts,
+                `${r.correct}/${r.total}`,
+                `<strong>${fmtPct(r.correct, r.total)}</strong>`,
+              ])
+            )}
+      </section>
+
+      <section class="admin-section">
+        <h3>Práctica libre — Métodos con mayor índice de error</h3>
+        ${practiceRows.length === 0
+          ? '<p class="admin-empty">Sin intentos de práctica libre registrados.</p>'
+          : renderTable(
+              ['Regla / Método detectado', 'Intentos', 'Aciertos', 'Acierto %'],
+              practiceRows.map((r) => [
+                escapeHtml(r.topic),
+                r.total,
+                r.correct,
+                `${r.total ? Math.round((r.correct / r.total) * 100) : 0}%`,
+              ])
+            )}
+      </section>
+    </div>
+  `;
+
+  // Manejo de tabs
+  const tabButtons = view.querySelectorAll('.admin-nav-tab');
+  const panes = {
+    resumen: view.querySelector('#tab-pane-resumen'),
+    alumnos: view.querySelector('#tab-pane-alumnos'),
+    temas: view.querySelector('#tab-pane-temas'),
   };
-  // Conteo por sección.
-  for (const a of quizAttempts) {
-    const sec = a.section_id || 'sin sección';
-    const cur = totals.bySection[sec] || { attempts: 0, correct: 0, total: 0 };
-    cur.attempts += 1;
-    cur.correct += Number(a.score) || 0;
-    cur.total += Number(a.total) || 0;
-    totals.bySection[sec] = cur;
-  }
-  const practiceAvg = totals.practiceTotal
-    ? Math.round((totals.practiceCorrect / totals.practiceTotal) * 100)
-    : 0;
 
-  // Últimos 5 intentos de quiz
-  const recent = quizAttempts.slice(0, 5);
-
-  const recentHtml = recent.length === 0
-    ? '<p class="admin-empty">Sin intentos aún.</p>'
-    : renderTable(['Email', 'Sección', 'Ley', 'Puntaje', 'Fecha'],
-        recent.map((a) => {
-          const profile = profileMap.get(a.user_id);
-          return [
-            escapeHtml(profile?.email || '(sin email)'),
-            escapeHtml(sectionLabel(a.section_id || '')),
-            escapeHtml(a.law_name || a.law_id || ''),
-            `${a.score}/${a.total}`,
-            fmtDate(a.created_at),
-          ];
-        }));
-
-  const bySectionRows = Object.entries(totals.bySection).map(([sec, v]) => {
-    const pct = v.total ? Math.round((v.correct / v.total) * 100) : 0;
-    return [escapeHtml(sectionLabel(sec)), v.attempts, `${pct}%`];
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      tabButtons.forEach((b) => b.classList.toggle('is-active', b === btn));
+      const target = btn.getAttribute('data-tab');
+      Object.entries(panes).forEach(([k, pane]) => {
+        if (pane) pane.style.display = k === target ? 'block' : 'none';
+      });
+    });
   });
 
-  return `
-    <section class="kpi-row">
-      <div class="kpi-card"><span class="kpi-num">${totals.students}</span><span class="kpi-label">alumnos</span></div>
-      <div class="kpi-card"><span class="kpi-num">${totals.attempts}</span><span class="kpi-label">intentos de quiz</span></div>
-      <div class="kpi-card"><span class="kpi-num">${totals.avg}%</span><span class="kpi-label">promedio global</span></div>
-      <div class="kpi-card"><span class="kpi-num">${totals.practiceTotal}</span><span class="kpi-label">práctica libre · ${practiceAvg}% acierto</span></div>
-    </section>
+  // Filtro en vivo de alumnos
+  const searchInput = view.querySelector('#admin-student-search');
+  searchInput?.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const filtered = q
+      ? students.filter((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
+      : students;
+    const tableWrap = view.querySelector('#admin-students-table-wrap');
+    if (tableWrap) {
+      tableWrap.innerHTML = renderStudentsTable(filtered);
+    }
+  });
+}
 
-    <section class="admin-section">
-      <h3>Intentos por sección</h3>
-      ${bySectionRows.length === 0
-        ? '<p class="admin-empty">Sin datos.</p>'
-        : renderTable(['Sección', 'Intentos', 'Acierto'], bySectionRows)}
-    </section>
-
-    <section class="admin-section">
-      <h3>Alumnos en riesgo (promedio &lt; ${AT_RISK_PCT}% o inactivos ${INACTIVE_DAYS}+ días)</h3>
-      ${atRisk.length === 0
-        ? `<p class="admin-empty">Sin alumnos en riesgo. 🎉</p>`
-        : renderTable(['Email', 'Intentos', 'Avg', 'Último intento', 'Estado'],
-            atRisk.map((r) => [
-              escapeHtml(r.email),
-              r.attempts,
-              `${Math.round(r.avg)}%`,
-              fmtDate(r.lastAt),
-              `<span class="pill ${r.atRisk ? 'pill-danger' : 'pill-warn'}">${r.atRisk ? 'bajo' : 'inactivo'}</span>`,
-            ]))}
-    </section>
-
-    <section class="admin-section">
-      <h3>Ranking por promedio</h3>
-      ${ranking.length === 0
-        ? `<p class="admin-empty">Sin intentos aún.</p>`
-        : renderTable(['Email', 'Intentos', 'Aciertos', 'Total', 'Promedio', 'Último intento'],
-            ranking.map((r) => [
-              escapeHtml(r.email),
-              r.attempts,
-              r.correct,
-              r.total,
-              `<strong>${Math.round(r.avg)}%</strong>`,
-              fmtDate(r.lastAt),
-            ]))}
-    </section>
-
-    <section class="admin-section">
-      <h3>Últimos intentos</h3>
-      ${recentHtml}
-    </section>
-
-    <section class="admin-section">
-      <h3>Desglose por sección y ley</h3>
-      ${lawRows.length === 0
-        ? `<p class="admin-empty">Sin datos.</p>`
-        : renderTable(['Sección', 'Ley', 'Intentos', 'Promedio'],
-            lawRows.map((r) => [
-              escapeHtml(sectionLabel(r.sectionId)),
-              escapeHtml(r.lawName || r.lawId),
-              r.attempts,
-              fmtPct(r.correct, r.total),
-            ]))}
-    </section>
-
-    <section class="admin-section">
-      <h3>Práctica libre — temas más fallados</h3>
-      ${practiceRows.length === 0
-        ? `<p class="admin-empty">Sin intentos de práctica libre.</p>`
-        : renderTable(['Tema detectado', 'Intentos', 'Aciertos', 'Acierto'],
-            practiceRows.map((r) => [
-              escapeHtml(r.topic),
-              r.total,
-              r.correct,
-              `${r.total ? Math.round((r.correct / r.total) * 100) : 0}%`,
-            ]))}
-    </section>
-  `;
+function renderStudentsTable(studentList) {
+  if (studentList.length === 0) {
+    return '<p class="admin-empty">No se encontraron alumnos con ese criterio de búsqueda.</p>';
+  }
+  return renderTable(
+    ['Nombre', 'Correo', 'Intentos', 'Aciertos / Total', 'Promedio', 'Última actividad', 'Estado'],
+    studentList.map((s) => {
+      let statusBadge = '<span class="pill pill-ok">Activo</span>';
+      if (s.neverStarted) {
+        statusBadge = '<span class="pill pill-warn">Sin intentos</span>';
+      } else if (s.atRisk) {
+        statusBadge = '<span class="pill pill-danger">Bajo promedio</span>';
+      } else if (s.inactive) {
+        statusBadge = '<span class="pill pill-warn">Inactivo</span>';
+      }
+      return [
+        `<strong>${escapeHtml(s.name)}</strong>`,
+        escapeHtml(s.email),
+        s.attempts,
+        `${s.correct}/${s.total}`,
+        `<strong>${s.attempts ? Math.round(s.avg) + '%' : '–'}</strong>`,
+        fmtDate(s.lastAt),
+        statusBadge,
+      ];
+    })
+  );
 }
 
 function renderTable(headers, rows) {

@@ -153,6 +153,11 @@ function generateSqlScript(questions, title) {
     lines.push(``);
   }
 
+  // Limpiar cualquier fila de prueba remanente
+  lines.push(`-- Limpieza de filas de prueba`);
+  lines.push(`DELETE FROM public.questions WHERE id = 'test-debug';`);
+  lines.push(``);
+
   return lines.join('\n');
 }
 

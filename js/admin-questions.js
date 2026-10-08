@@ -6,6 +6,7 @@ import { isAdmin } from './auth.js';
 import { getSupabase } from './supabase.js';
 import { listQuestions, updateQuestion, deleteQuestion, insertQuestions, listQuestionsRange } from './questions.js';
 import { validateQuestionJSON } from '../data/questions/upload-schema.js';
+import { sections } from './sections.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -47,15 +48,23 @@ export async function renderAdminQuestions(view) {
     <div class="back-row"><a class="back-link" href="#/admin">← Volver al dashboard</a></div>
     <section class="admin-card">
       <header class="admin-head">
-        <h2>Catálogo de preguntas</h2>
-        <p class="admin-sub">Sube, edita o elimina preguntas del banco global.</p>
+        <div>
+          <h2>Catálogo de preguntas</h2>
+          <p class="admin-sub">Explora, edita o elimina reactivos del banco general de preguntas.</p>
+        </div>
       </header>
       <div class="admin-tab-bar">
-        <button data-tab="browse" class="admin-tab is-active">Explorar</button>
-        <button data-tab="upload" class="admin-tab">Subir JSON</button>
+        <button data-tab="browse" class="admin-tab is-active">Explorar banco</button>
+        <button data-tab="upload" class="admin-tab">Subir preguntas (JSON)</button>
       </div>
       <div id="admin-questions-body"></div>
     </section>`;
+
+  const backLink = view.querySelector('.back-link');
+  backLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.hash = '#/admin';
+  });
 
   const tabs = view.querySelectorAll('.admin-tab');
   tabs.forEach((t) => {
@@ -74,30 +83,40 @@ export async function renderAdminQuestions(view) {
 
 async function showBrowse() {
   const body = document.querySelector('#admin-questions-body');
+  if (!body) return;
   body.innerHTML = renderFilters() + `<div id="questions-result"><p class="admin-loading">Cargando preguntas…</p></div>`;
   bindFilters();
+  populateSubtema();
 
   await loadQuestions();
 }
 
 function renderFilters() {
   const f = state.filters;
-  const opts = (sel, cur) => `<option value="${sel}"${sel===cur?' selected':''}>${sel || '—'}</option>`;
+  const sectionOptions = sections
+    .filter((s) => s.available && s.id !== 'practica-libre')
+    .map((s) => `<option value="${s.id}"${s.id === f.section_id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`)
+    .join('');
+
   return `
     <div class="questions-filters">
       <select id="f-section" title="Sección">
-          ${['<option value="">Todas</option>','algebra','calculo-diferencial','calculo-integral','practica-libre'].map(s => opts(s, f.section_id)).join('')}
-        </select>
+        <option value="">Todas las secciones</option>
+        ${sectionOptions}
+      </select>
       <select id="f-subtema" title="Subtema">
-          <option value="">Todos</option>
-        </select>
+        <option value="">Todos los subtemas</option>
+      </select>
       <select id="f-law" title="Ley">
-          <option value="">Todas</option>
-        </select>
+        <option value="">Todas las leyes</option>
+      </select>
       <select id="f-diff" title="Dificultad">
-          ${['','easy','medium','hard'].map(d => opts(d, f.difficulty)).join('')}
-        </select>
-      <input id="f-search" type="search" placeholder="Buscar en prompt…" value="${escapeAttr(f.search)}">
+        <option value="">Cualquier dificultad</option>
+        <option value="easy"${f.difficulty === 'easy' ? ' selected' : ''}>Fácil</option>
+        <option value="medium"${f.difficulty === 'medium' ? ' selected' : ''}>Medio</option>
+        <option value="hard"${f.difficulty === 'hard' ? ' selected' : ''}>Difícil</option>
+      </select>
+      <input id="f-search" type="search" placeholder="Buscar en texto del ejercicio…" value="${escapeAttr(f.search)}">
       <button id="f-reset" class="btn btn-soft btn-small" type="button">Limpiar</button>
     </div>
   `;
@@ -131,20 +150,17 @@ function bindFilters() {
   });
 }
 
-// Listas de opciones (config simples)
-const SECTION_SUBTEMA = {
-  'algebra': ['exponentes', 'logaritmos', 'trigonometria', 'productos-notables', 'complejos', 'cuadratica', 'division-polinomios'],
-  'calculo-diferencial': ['derivacion'],
-  'calculo-integral': ['inmediatas', 'partes', 'fracciones-parciales', 'sustitucion-trigonometrica'],
-  'practica-libre': [],
-};
-
 function populateSubtema() {
   const sub = document.getElementById('f-subtema');
   const law = document.getElementById('f-law');
   if (!sub || !law) return;
-  const subs = SECTION_SUBTEMA[state.filters.section_id] || [];
-  sub.innerHTML = '<option value="">Todos</option>' + subs.map(s => `<option value="${s}"${s===state.filters.subtema_id?' selected':''}>${s}</option>`).join('');
+
+  const currentSec = sections.find((s) => s.id === state.filters.section_id);
+  const subs = currentSec?.module?.getAllSubtemas?.() || [];
+
+  sub.innerHTML = '<option value="">Todos los subtemas</option>' +
+    subs.map((s) => `<option value="${s.id}"${s.id === state.filters.subtema_id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+
   state.filters.subtema_id = '';
   populateLaw();
 }
@@ -152,11 +168,14 @@ function populateSubtema() {
 function populateLaw() {
   const law = document.getElementById('f-law');
   if (!law) return;
-  // Las leyes las inferimos del prefix del id de pregunta o dejamos vacío.
-  law.innerHTML = '<option value="">Todas</option>' +
-    ['exponentes','logaritmos','derivacion','inmediatas','partes','fracciones-parciales','sustitucion-trigonometrica'].map(l =>
-      `<option value="${l}"${l===state.filters.law_id?' selected':''}>${l}</option>`
-    ).join('');
+
+  const currentSec = sections.find((s) => s.id === state.filters.section_id);
+  const currentSub = currentSec?.module?.getSubtema?.(state.filters.subtema_id);
+  const laws = currentSub?.laws || [];
+
+  law.innerHTML = '<option value="">Todas las leyes</option>' +
+    laws.map((l) => `<option value="${l.lawId}"${l.lawId === state.filters.law_id ? ' selected' : ''}>${escapeHtml(l.lawName || l.lawId)}</option>`).join('');
+
   state.filters.law_id = '';
 }
 

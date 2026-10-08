@@ -18,7 +18,8 @@ import { getSupabase, isSupabaseReady } from './supabase.js';
 import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js';
 import { TERMS_DEFAULT, termsToHtml } from './terms.js';
 import { saveAttempt } from './results.js';
-import { renderAdminDashboard } from './admin.js';
+import { renderAdminDashboard } from './admin.js?v=4';
+import { renderAdminQuestions } from './admin-questions.js?v=4';
 import { getLaw as getLawRemote } from './questions.js';
 
 const view = document.getElementById('view');
@@ -83,16 +84,86 @@ function hydrate(root) {
 }
 
 /* -------------------------------------------------------------
+   Barra de usuario global en el header institucional
+   ------------------------------------------------------------- */
+/* -------------------------------------------------------------
+   Barra de usuario global en el header institucional
+   ------------------------------------------------------------- */
+function updateUserBar(user, isUserAdmin) {
+  const bar = document.getElementById('user-bar');
+  if (!bar) return;
+  if (!user) {
+    const isRegisterRoute = (window.location.hash || '').includes('registro');
+    if (isRegisterRoute) {
+      bar.innerHTML = `<a class="btn btn-gold btn-small" href="#/">Iniciar sesión</a>`;
+    } else {
+      bar.innerHTML = `<a class="btn btn-gold btn-small" href="#/registro">Registrarse</a>`;
+    }
+    return;
+  }
+  const adminBadge = isUserAdmin ? `<span class="badge badge-admin">Profesor</span>` : '';
+  const adminBtn = isUserAdmin ? `<a class="btn btn-gold btn-small" href="#/admin">Dashboard</a>` : '';
+  bar.innerHTML = `
+    <span class="user-email" title="${escapeAttr(user.email)}">${escapeHtml(user.email)}</span>
+    ${adminBadge}
+    ${adminBtn}
+    <button id="nav-logout-btn" class="btn btn-soft btn-small" type="button">Cerrar sesión</button>
+  `;
+  bar.querySelector('#nav-logout-btn')?.addEventListener('click', async () => {
+    await signOut();
+    window.__currentEmail = null;
+    window.__isAdmin = false;
+    session = null;
+    updateUserBar(null, false);
+    window.location.hash = '#/';
+    route();
+  });
+}
+
+/* -------------------------------------------------------------
    Router
    ------------------------------------------------------------- */
-function route() {
-  const seg = (window.location.hash || '#/')
-    .replace(/^#\/?/, '')
-    .split('/')
-    .filter(Boolean);
+async function route() {
+  const hash = window.location.hash || '#/';
+  const seg = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
 
-  // Ruta oculta del profesor
+  // Verificación de sesión en Supabase
+  if (isSupabaseReady()) {
+    if (!session) {
+      session = await getSession();
+      if (session) {
+        window.__currentEmail = session.user?.email || '';
+        window.__isAdmin = await isAdmin();
+      }
+    }
+
+    // Usuario no autenticado: el Login es la página principal
+    if (!session) {
+      updateUserBar(null, false);
+      if (seg[0] === 'registro') {
+        renderRegister();
+        return;
+      }
+      // Cualquier otra ruta o la raíz (#/) muestra la vista principal de login
+      renderLogin();
+      return;
+    }
+
+    // Usuario autenticado que navega a login o registro es llevado al menú
+    if (seg[0] === 'login' || seg[0] === 'registro') {
+      window.location.hash = '#/';
+      return;
+    }
+
+    updateUserBar(session.user, window.__isAdmin);
+  }
+
+  // Rutas del profesor
   if (seg[0] === 'admin') {
+    if (seg[1] === 'preguntas') {
+      renderAdminQuestions(view);
+      return;
+    }
     renderAdminDashboard(view);
     return;
   }
@@ -230,25 +301,13 @@ function renderMenu() {
     })
     .join('');
 
-  const adminBtn = (window.__isAdmin === true)
-    ? `<a class="btn btn-soft btn-small" href="#/admin">Dashboard</a>`
-    : '';
-  const userBar = (window.__currentEmail)
-    ? `<div class="user-bar"><span class="user-email">${escapeHtml(window.__currentEmail)}</span>${adminBtn}<button id="logout-btn" class="btn btn-soft btn-small" type="button">Cerrar sesión</button></div>`
-    : '';
-
   view.innerHTML = `
-    ${userBar}
-    <h2 class="visually-hidden">Secciones</h2>
+    <div class="menu-hero">
+      <span class="auth-badge">Plataforma de Estudio</span>
+      <h2>Módulos de Preparación Matemática</h2>
+      <p class="menu-sub">Repasa conceptos teóricos, formularios integrales y resuelve cuestionarios interactivos de opción múltiple.</p>
+    </div>
     <div class="section-grid">${cards}</div>`;
-
-  view.querySelector('#logout-btn')?.addEventListener('click', async () => {
-    await signOut();
-    window.__isAdmin = false;
-    window.__currentEmail = null;
-    window.location.hash = '#/';
-    window.location.reload();
-  });
 }
 
 /* -------------------------------------------------------------
@@ -874,162 +933,258 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* -------------------------------------------------------------
-   Vista: autenticación (login / registro)
+   Vista: inicio de sesión (página principal para visitantes)
    ------------------------------------------------------------- */
-async function renderAuth() {
-  // Si ya aceptó la versión actual de Términos, ir directo al form;
-  // si no, mostrar primero el modal de Términos y luego el form.
-  const alreadyAccepted = await hasAcceptedCurrentTerms();
-  if (alreadyAccepted) {
-    showAuthForm();
-  } else {
-    showTermsModal();
-  }
-}
-
-function showTermsModal() {
+function renderLogin() {
   view.innerHTML = `
-    <div class="terms-shell">
-      <div class="terms-modal">
-        <h1 class="auth-title">Términos y Condiciones</h1>
-        <p class="auth-sub">Lee el aviso de privacidad. Al final marca la casilla para continuar.</p>
-        <div id="terms-content" class="terms-modal__content"></div>
-        <div class="terms-modal__footer">
-          <label class="terms-modal__check">
-            <input type="checkbox" id="terms-accept" disabled>
-            <span>He leído y acepto los Términos y Condiciones y el aviso de privacidad</span>
-          </label>
-          <button id="terms-continue" class="btn btn-primary btn-block" type="button" disabled>Aceptar y continuar</button>
+    <div class="login-portal">
+      <div class="login-portal-intro">
+        <span class="auth-badge">Universidad Autónoma de Chiapas</span>
+        <h1 class="login-portal-title">Quiz de Matemáticas y Ecuaciones Diferenciales</h1>
+        <p class="login-portal-desc">Plataforma de evaluación continua y estudio interactivo. Repasa conceptos clave, fórmulas y reactivos de opción múltiple con retroalimentación inmediata.</p>
+        <ul class="login-portal-features">
+          <li>Álgebra: exponentes, polinomios, trigonometría y números complejos</li>
+          <li>Cálculo Diferencial: límites algebraicos y reglas de derivación</li>
+          <li>Cálculo Integral: integrales inmediatas, por partes y fracciones parciales</li>
+          <li>Práctica Libre: detección de métodos y fórmulas recomendadas</li>
+        </ul>
+      </div>
+
+      <div class="auth-wrapper">
+        <div class="auth-card">
+          <header class="auth-header">
+            <span class="auth-badge">Acceso a la plataforma</span>
+            <h2 class="auth-title">Iniciar sesión</h2>
+            <p class="auth-sub">Ingresa con tus credenciales institucionales o personales para acceder a los cuestionarios.</p>
+          </header>
+
+          <form id="login-form" class="auth-form" novalidate autocomplete="on">
+            <div class="auth-field">
+              <label for="login-email">Correo electrónico</label>
+              <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="ejemplo@unach.mx">
+            </div>
+
+            <div class="auth-field">
+              <label for="login-password">Contraseña</label>
+              <div class="auth-input-wrapper">
+                <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="Tu contraseña">
+                <button type="button" class="auth-pwd-toggle" id="login-pwd-toggle" aria-label="Mostrar contraseña">Ver</button>
+              </div>
+            </div>
+
+            <div id="login-msg" class="auth-msg" role="status"></div>
+
+            <button id="login-submit" class="btn btn-primary btn-block" type="submit">Iniciar sesión</button>
+
+            <div class="auth-switch">
+              ¿No tienes una cuenta aún? <a href="#/registro">Regístrate aquí</a>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   `;
 
-  const content = view.querySelector('#terms-content');
-  content.innerHTML = termsToHtml(TERMS_DEFAULT);
+  const form = view.querySelector('#login-form');
+  const emailInput = view.querySelector('#login-email');
+  const pwdInput = view.querySelector('#login-password');
+  const toggleBtn = view.querySelector('#login-pwd-toggle');
+  const submitBtn = view.querySelector('#login-submit');
+  const msgEl = view.querySelector('#login-msg');
 
-  const scrollTarget = content;
-  const accept = view.querySelector('#terms-accept');
-  const continueBtn = view.querySelector('#terms-continue');
-
-  // Habilitar el checkbox solo cuando el usuario haya scrolleado al fondo.
-  function checkScroll() {
-    const atBottom = scrollTarget.scrollTop + scrollTarget.clientHeight
-    >= scrollTarget.scrollHeight - 1;
-    if (atBottom) accept.disabled = false;
-  }
-  scrollTarget.addEventListener('scroll', checkScroll);
-  // Trigger inicial (por si el contenido cabe sin scroll).
-  checkScroll();
-
-  accept.addEventListener('change', () => {
-    continueBtn.disabled = !accept.checked;
+  toggleBtn.addEventListener('click', () => {
+    const isPwd = pwdInput.type === 'password';
+    pwdInput.type = isPwd ? 'text' : 'password';
+    toggleBtn.textContent = isPwd ? 'Ocultar' : 'Ver';
   });
 
-  continueBtn.addEventListener('click', () => {
-    // Mostrar el formulario inmediatamente (mejor UX) y registrar la
-    // aceptación en background si ya hay sesión.
-    showAuthForm();
-    (async () => {
-      const user = await getUser();
-      if (user) {
-        try {
-          const version = await getCurrentTermsVersion();
-          await acceptTerms(user.id, version);
-        } catch (_) { /* no bloquear por ansiedad de espera */ }
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    const password = pwdInput.value;
+
+    if (!email || !password) {
+      msgEl.textContent = 'Por favor ingresa tu correo y contraseña.';
+      msgEl.className = 'auth-msg auth-err';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    msgEl.textContent = 'Iniciando sesión…';
+    msgEl.className = 'auth-msg';
+
+    try {
+      const { user, error } = await signIn(email, password);
+      if (error) {
+        msgEl.textContent = (error.message && error.message.includes('Invalid login credentials'))
+          ? 'Correo o contraseña incorrectos.'
+          : (error.message || 'Error de autenticación.');
+        msgEl.className = 'auth-msg auth-err';
+        submitBtn.disabled = false;
+        return;
       }
-    })();
+
+      msgEl.textContent = 'Sesión iniciada. Redirigiendo…';
+      msgEl.className = 'auth-msg auth-ok';
+      session = await getSession();
+      window.__currentEmail = user?.email || email;
+      window.__isAdmin = await isAdmin();
+      updateUserBar(user, window.__isAdmin);
+      setTimeout(() => {
+        window.location.hash = '#/';
+        route();
+      }, 300);
+    } catch (err) {
+      msgEl.textContent = err.message || 'Error inesperado.';
+      msgEl.className = 'auth-msg auth-err';
+      submitBtn.disabled = false;
+    }
   });
 }
 
-function showAuthForm() {
+/* -------------------------------------------------------------
+   Vista: registro de cuenta (con nombre, confirmación y términos)
+   ------------------------------------------------------------- */
+function renderRegister() {
   view.innerHTML = `
-    <div class="auth-card">
-      <div class="auth-tabs">
-        <button id="auth-tab-login" class="auth-tab is-active" type="button">Iniciar sesión</button>
-        <button id="auth-tab-register" class="auth-tab" type="button">Registrarse</button>
+    <div class="auth-wrapper">
+      <div class="auth-card">
+        <header class="auth-header">
+          <span class="auth-badge">Nuevo Estudiante</span>
+          <h2 class="auth-title">Crear cuenta</h2>
+          <p class="auth-sub">Regístrate para guardar tu progreso académico y resolver los cuestionarios.</p>
+        </header>
+
+        <form id="reg-form" class="auth-form" novalidate autocomplete="on">
+          <div class="auth-field">
+            <label for="reg-name">Nombre completo</label>
+            <input type="text" id="reg-name" name="name" required minlength="2" maxlength="80" autocomplete="name" placeholder="Tu nombre y apellidos">
+          </div>
+
+          <div class="auth-field">
+            <label for="reg-email">Correo electrónico</label>
+            <input type="email" id="reg-email" name="email" required autocomplete="email" placeholder="ejemplo@unach.mx">
+          </div>
+
+          <div class="auth-field">
+            <label for="reg-password">Contraseña</label>
+            <div class="auth-input-wrapper">
+              <input type="password" id="reg-password" name="password" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+              <button type="button" class="auth-pwd-toggle" id="reg-pwd-toggle" aria-label="Mostrar contraseña">Ver</button>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="reg-password-confirm">Confirmar contraseña</label>
+            <input type="password" id="reg-password-confirm" name="password-confirm" required minlength="6" autocomplete="new-password" placeholder="Repite tu contraseña">
+          </div>
+
+          <div class="auth-terms-box">
+            <input type="checkbox" id="reg-terms-check" required>
+            <label for="reg-terms-check">
+              He leído y acepto los <button type="button" class="terms-link" id="reg-open-terms">Términos y Condiciones</button> y el aviso de privacidad de la plataforma.
+            </label>
+          </div>
+
+          <div id="reg-msg" class="auth-msg" role="status"></div>
+
+          <button id="reg-submit" class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
+
+          <div class="auth-switch">
+            ¿Ya tienes una cuenta? <a href="#/">Inicia sesión aquí</a>
+          </div>
+        </form>
       </div>
-      <form id="auth-form" class="auth-form" autocomplete="on" novalidate>
-        <label class="auth-field">
-          <span>Correo</span>
-          <input type="email" id="auth-email" required autocomplete="email">
-        </label>
-        <label class="auth-field">
-          <span>Contraseña</span>
-          <input type="password" id="auth-password" required minlength="6" autocomplete="current-password">
-        </label>
-        <label class="auth-field" id="auth-name-field" hidden>
-          <span>Nombre completo <em class="req" aria-hidden="true">*</em></span>
-          <input type="text" id="auth-name" autocomplete="name" required minlength="2" maxlength="80">
-        </label>
-        <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Entrar</button>
-        <div id="auth-msg" class="auth-msg" role="status"></div>
-      </form>
     </div>
   `;
 
-  const tabLogin = view.querySelector('#auth-tab-login');
-  const tabRegister = view.querySelector('#auth-tab-register');
-  const nameField = view.querySelector('#auth-name-field');
-  const submitBtn = view.querySelector('#auth-submit');
-  const msgEl = view.querySelector('#auth-msg');
+  const form = view.querySelector('#reg-form');
+  const nameInput = view.querySelector('#reg-name');
+  const emailInput = view.querySelector('#reg-email');
+  const pwdInput = view.querySelector('#reg-password');
+  const pwdConfInput = view.querySelector('#reg-password-confirm');
+  const toggleBtn = view.querySelector('#reg-pwd-toggle');
+  const termsCheck = view.querySelector('#reg-terms-check');
+  const openTermsBtn = view.querySelector('#reg-open-terms');
+  const submitBtn = view.querySelector('#reg-submit');
+  const msgEl = view.querySelector('#reg-msg');
 
-  function setMode(mode) {
-    tabLogin.classList.toggle('is-active', mode === 'login');
-    tabRegister.classList.toggle('is-active', mode === 'register');
-    nameField.hidden = mode !== 'register';
-    submitBtn.textContent = mode === 'login' ? 'Entrar' : 'Crear cuenta';
-    msgEl.textContent = '';
-    msgEl.className = 'auth-msg';
-  }
-  tabLogin.addEventListener('click', () => setMode('login'));
-  tabRegister.addEventListener('click', () => setMode('register'));
-  setMode('login');
+  toggleBtn.addEventListener('click', () => {
+    const isPwd = pwdInput.type === 'password';
+    pwdInput.type = isPwd ? 'text' : 'password';
+    toggleBtn.textContent = isPwd ? 'Ocultar' : 'Ver';
+  });
 
-  view.querySelector('#auth-form').addEventListener('submit', async (e) => {
+  openTermsBtn.addEventListener('click', () => {
+    openModal({
+      title: 'Términos y Condiciones — UNACH',
+      contentHTML: `<div class="terms-modal__content">${termsToHtml(TERMS_DEFAULT)}</div>`,
+    });
+  });
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = view.querySelector('#auth-email').value.trim();
-    const password = view.querySelector('#auth-password').value;
-    const fullName = view.querySelector('#auth-name').value.trim();
-    const mode = tabRegister.classList.contains('is-active') ? 'register' : 'login';
-    if (mode === 'register' && !fullName) {
-      msgEl.textContent = 'Ingresa tu nombre completo.';
+    const fullName = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = pwdInput.value;
+    const confirm = pwdConfInput.value;
+
+    if (!fullName || fullName.length < 2) {
+      msgEl.textContent = 'Por favor ingresa tu nombre completo.';
       msgEl.className = 'auth-msg auth-err';
-      view.querySelector('#auth-name').focus();
+      nameInput.focus();
       return;
     }
     if (!email || !password) {
-      msgEl.textContent = 'Completa correo y contraseña.';
+      msgEl.textContent = 'Por favor ingresa correo y contraseña.';
       msgEl.className = 'auth-msg auth-err';
       return;
     }
+    if (password.length < 6) {
+      msgEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      msgEl.className = 'auth-msg auth-err';
+      pwdInput.focus();
+      return;
+    }
+    if (password !== confirm) {
+      msgEl.textContent = 'Las contraseñas no coinciden.';
+      msgEl.className = 'auth-msg auth-err';
+      pwdConfInput.focus();
+      return;
+    }
+    if (!termsCheck.checked) {
+      msgEl.textContent = 'Debes aceptar los Términos y Condiciones para continuar.';
+      msgEl.className = 'auth-msg auth-err';
+      termsCheck.focus();
+      return;
+    }
+
     submitBtn.disabled = true;
-    msgEl.textContent = mode === 'login' ? 'Iniciando sesión…' : 'Creando cuenta…';
+    msgEl.textContent = 'Creando cuenta…';
     msgEl.className = 'auth-msg';
+
     try {
-      let result;
-      if (mode === 'login') {
-        result = await signIn(email, password);
-      } else {
-        const version = await getCurrentTermsVersion();
-        result = await signUp(email, password, fullName, version);
-      }
-      const { error } = result;
+      const version = await getCurrentTermsVersion();
+      const { user, error } = await signUp(email, password, fullName, version);
       if (error) {
-        msgEl.textContent = error.message || 'Error de autenticación.';
+        msgEl.textContent = error.message || 'Error al crear la cuenta.';
         msgEl.className = 'auth-msg auth-err';
-      } else {
-        msgEl.textContent = mode === 'login'
-          ? 'Sesión iniciada. Redirigiendo…'
-          : 'Cuenta creada. Revisa tu correo si Confirm email está activo.';
-        msgEl.className = 'auth-msg auth-ok';
-        window.location.hash = '#/';
-        window.location.reload();
+        submitBtn.disabled = false;
+        return;
       }
+      msgEl.textContent = 'Cuenta creada exitosamente. Redirigiendo…';
+      msgEl.className = 'auth-msg auth-ok';
+      session = await getSession();
+      window.__currentEmail = user?.email || email;
+      window.__isAdmin = false;
+      updateUserBar(user, false);
+      setTimeout(() => {
+        window.location.hash = '#/';
+        route();
+      }, 400);
     } catch (err) {
       msgEl.textContent = err.message || 'Error desconocido.';
       msgEl.className = 'auth-msg auth-err';
-    } finally {
       submitBtn.disabled = false;
     }
   });
@@ -1039,7 +1194,10 @@ function showAuthForm() {
    Bootstrap
    ------------------------------------------------------------- */
 async function boot() {
-  window.addEventListener('hashchange', route);
+  window.addEventListener('hashchange', () => {
+    route();
+  });
+
   if (!isReady()) {
     let tries = 0;
     await new Promise((resolve) => {
@@ -1053,16 +1211,16 @@ async function boot() {
   }
 
   if (isSupabaseReady()) {
-    const session = await getSession();
+    session = await getSession();
     if (session) {
       window.__currentEmail = session.user?.email || '';
       window.__isAdmin = await isAdmin();
-      route();
-      return;
+      updateUserBar(session.user, window.__isAdmin);
+    } else {
+      updateUserBar(null, false);
     }
-    renderAuth();
-    return;
   }
+
   route();
 }
 

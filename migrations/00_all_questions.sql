@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migración Supabase: Catálogo Completo Global (758 preguntas)
 -- Total preguntas en este script: 758
--- Fecha de generación: 2026-10-06T15:41:00.165Z
+-- Fecha de generación: 2026-10-08T16:01:15.351Z
 -- =====================================================================
 
 -- Tabla e índices base
@@ -1001,3 +1001,6 @@ ON CONFLICT (id) DO UPDATE SET
   options     = EXCLUDED.options,
   explanation = EXCLUDED.explanation,
   updated_at  = now();
+
+-- Limpieza de filas de prueba
+DELETE FROM public.questions WHERE id = 'test-debug';

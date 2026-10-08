@@ -1,5 +1,5 @@
 // scripts/verify_db_questions.js
-// Verifica la cantidad y distribución de preguntas migradas en Supabase vía REST API usando curl.
+// Verifica la cantidad, distribución e integridad de caracteres (mojibake) en Supabase vía REST API usando curl.
 
 import { execSync } from 'child_process';
 
@@ -30,6 +30,27 @@ function checkCount(filter = '') {
   }
 }
 
+function checkMojibake() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/questions?select=id,prompt,explanation&limit=100`;
+    const output = execSync(
+      `curl.exe -s "${url}" -H "apikey: ${ANON_KEY}" -H "Authorization: Bearer ${ANON_KEY}"`,
+      { encoding: 'utf-8', timeout: 15000 }
+    );
+    const rows = JSON.parse(output);
+    const corrupted = rows.filter(r => /Ã|Â|â€/.test(r.prompt || '') || /Ã|Â|â€/.test(r.explanation || ''));
+    const testDebug = rows.find(r => r.id === 'test-debug');
+    return {
+      sampleChecked: rows.length,
+      corruptedCount: corrupted.length,
+      hasTestDebug: Boolean(testDebug),
+      corruptedSample: corrupted.slice(0, 3)
+    };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
 function main() {
   console.log('=== Verificando preguntas en Supabase (vaxpiyhwrfzjukevzslo) ===');
   
@@ -57,14 +78,28 @@ function main() {
     }
   }
 
-  if (totalRes.total === 758) {
-    console.log('\n✓ ¡MIGRACIÓN COMPLETADA Y VERIFICADA CON ÉXITO! (100% de preguntas cargadas)');
-  } else if (totalRes.total === 0) {
-    console.log('\nℹ Nota: La base de datos aún tiene 0 preguntas.');
-    console.log('  Ejecuta el contenido de "migrations/00_all_questions.sql" en el SQL Editor de Supabase:');
-    console.log('  https://supabase.com/dashboard/project/vaxpiyhwrfzjukevzslo/sql/new');
+  const mojibakeRes = checkMojibake();
+  console.log('\n--- Auditoría de Caracteres y Filas de Prueba ---');
+  if (mojibakeRes.error) {
+    console.log('  No se pudo verificar muestra de texto:', mojibakeRes.error);
   } else {
-    console.log(`\n⚠ Advertencia: Se encontraron ${totalRes.total} preguntas pero se esperaban 758.`);
+    if (mojibakeRes.hasTestDebug) {
+      console.log('  ⚠ Fila de prueba "test-debug" presente en BD.');
+    } else {
+      console.log('  ✓ Sin filas de prueba extra ("test-debug" eliminada).');
+    }
+
+    if (mojibakeRes.corruptedCount > 0) {
+      console.log(`  ⚠ Advertencia: Se detectaron caracteres corruptos (mojibake) en la muestra (${mojibakeRes.corruptedCount}/${mojibakeRes.sampleChecked}):`);
+      mojibakeRes.corruptedSample.forEach(c => console.log(`    - ID: ${c.id}: ${c.prompt}`));
+      console.log('  -> Es necesario re-aplicar migrations/00_all_questions.sql con codificación UTF-8.');
+    } else {
+      console.log('  ✓ Acentos y caracteres especiales limpios (sin mojibake).');
+    }
+  }
+
+  if (totalRes.total === 758 && mojibakeRes.corruptedCount === 0 && !mojibakeRes.hasTestDebug) {
+    console.log('\n✓ ¡MIGRACIÓN COMPLETADA Y VERIFICADA CON ÉXITO! (100% de preguntas cargadas y limpias)');
   }
 }
 
