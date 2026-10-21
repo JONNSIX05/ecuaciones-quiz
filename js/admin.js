@@ -4,8 +4,9 @@
 // - Directorio completo de Usuarios y Estudiantes con asignación/revocación del rol de Profesor
 // - Desglose de rendimiento por sección, subtema/ley y Práctica Libre.
 
-import { api } from './api.js';
-import { isAdmin, getUser, signOut } from './auth.js';
+import { api } from './api.js?v=8';
+import { isAdmin, getUser, signOut } from './auth.js?v=8';
+import { openModal, closeActiveModal } from './modal.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -274,10 +275,17 @@ function renderDashboardContent(
     const avg = agg.total ? (agg.correct / agg.total) * 100 : 0;
     const daysSince = agg.lastAt ? (now - agg.lastAt) / 86400000 : Infinity;
     const isProf = Boolean(p.is_admin);
+    const grado = (p.grado || '').trim();
+    const grupo = (p.grupo || '').trim();
+    const gradoGrupoLabel = [grado, grupo].filter(Boolean).join(' ') || '—';
     return {
       userId: p.user_id,
       email: p.email || '(sin correo)',
       name: p.full_name || 'Sin nombre registrado',
+      rawName: p.full_name || '',
+      grado,
+      grupo,
+      gradoGrupoLabel,
       isAdmin: isProf,
       createdAt: p.created_at,
       lastLoginAt: p.last_login_at,
@@ -528,7 +536,18 @@ function renderDashboardContent(
             <button type="button" class="admin-pill-btn" data-user-filter="professors">Profesores (${professors.length})</button>
             <button type="button" class="admin-pill-btn" data-user-filter="risk">En riesgo / Sin intentos (${atRiskStudents.length + neverStartedStudents.length})</button>
           </div>
-          <input type="search" id="admin-student-search" class="admin-search-input" placeholder="Buscar por nombre o correo electrónico…">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            <select id="admin-group-filter" class="admin-search-input" style="min-width:165px;" aria-label="Filtrar por grado y grupo">
+              <option value="">Todos los grados/grupos</option>
+              ${[...new Set(allUsers.map((u) => u.gradoGrupoLabel).filter((g) => g && g !== '—'))]
+                .sort()
+                .map((g) => `<option value="${escapeAttr(g)}">Grado/Grupo: ${escapeHtml(g)}</option>`)
+                .join('')}
+              <option value="__none__">Sin grado/grupo</option>
+            </select>
+            <input type="search" id="admin-student-search" class="admin-search-input" placeholder="Buscar por nombre, correo o grupo…">
+            <button type="button" id="admin-export-users-csv" class="btn btn-soft btn-small">Exportar CSV</button>
+          </div>
         </div>
 
         <div id="admin-students-table-wrap">
@@ -604,18 +623,33 @@ function renderDashboardContent(
   // Estado de filtro en pestaña Usuarios
   let activeRoleFilter = 'all';
   const searchInput = view.querySelector('#admin-student-search');
+  const groupSelect = view.querySelector('#admin-group-filter');
+  const exportCsvBtn = view.querySelector('#admin-export-users-csv');
   const filterBtns = view.querySelectorAll('[data-user-filter]');
 
-  function refreshUsersTable() {
+  function getFilteredUsers() {
     const q = (searchInput?.value || '').toLowerCase().trim();
-    const filtered = allUsers.filter((u) => {
+    const grp = groupSelect?.value || '';
+    return allUsers.filter((u) => {
       if (activeRoleFilter === 'students' && u.isAdmin) return false;
       if (activeRoleFilter === 'professors' && !u.isAdmin) return false;
       if (activeRoleFilter === 'risk' && (u.isAdmin || (!u.atRisk && !u.inactive && !u.neverStarted))) return false;
-      if (q && !u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
+      if (grp === '__none__' && u.gradoGrupoLabel !== '—') return false;
+      if (grp && grp !== '__none__' && u.gradoGrupoLabel !== grp) return false;
+      if (
+        q &&
+        !u.name.toLowerCase().includes(q) &&
+        !u.email.toLowerCase().includes(q) &&
+        !u.gradoGrupoLabel.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
       return true;
     });
+  }
 
+  function refreshUsersTable() {
+    const filtered = getFilteredUsers();
     const tableWrap = view.querySelector('#admin-students-table-wrap');
     if (tableWrap) {
       tableWrap.innerHTML = renderUsersDirectoryTable(filtered, currentUser);
@@ -632,6 +666,38 @@ function renderDashboardContent(
   });
 
   searchInput?.addEventListener('input', refreshUsersTable);
+  groupSelect?.addEventListener('change', refreshUsersTable);
+
+  exportCsvBtn?.addEventListener('click', () => {
+    const rows = getFilteredUsers();
+    const header = ['Nombre', 'Correo', 'Grado', 'Grupo', 'Rol', 'Intentos', 'Aciertos', 'Total Reactivos', 'Promedio %', 'Ultima Actividad'];
+    const csvLines = [
+      header.join(','),
+      ...rows.map((u) =>
+        [
+          `"${String(u.rawName || '').replace(/"/g, '""')}"`,
+          `"${String(u.email || '').replace(/"/g, '""')}"`,
+          `"${String(u.grado || '').replace(/"/g, '""')}"`,
+          `"${String(u.grupo || '').replace(/"/g, '""')}"`,
+          u.isAdmin ? 'Profesor' : 'Estudiante',
+          u.attempts,
+          u.correct,
+          u.total,
+          Math.round(u.avg),
+          `"${u.lastAt || u.createdAt || ''}"`,
+        ].join(',')
+      ),
+    ];
+    const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `usuarios-eqd-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
 
   function bindRoleButtons() {
     const feedbackEl = view.querySelector('#admin-role-feedback');
@@ -677,6 +743,110 @@ function renderDashboardContent(
         }
       });
     });
+
+    view.querySelectorAll('.js-edit-user').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-user-id');
+        const found = allUsers.find((u) => u.userId === targetId);
+        if (!found) return;
+        openEditUserModal(found, feedbackEl);
+      });
+    });
+  }
+
+  function openEditUserModal(u, feedbackEl) {
+    const bodyEl = openModal({
+      title: `Editar datos de usuario`,
+      contentHTML: `
+        <form id="modal-edit-user-form" class="auth-form" novalidate>
+          <p style="margin:0 0 .75rem;font-size:.86rem;color:var(--muted);">
+            Correo: <strong>${escapeHtml(u.email)}</strong>
+          </p>
+          <div class="auth-field">
+            <label for="edit-user-name">Nombre completo</label>
+            <input type="text" id="edit-user-name" required minlength="2" maxlength="120"
+              value="${escapeAttr(u.rawName || '')}" placeholder="Nombre y apellidos">
+          </div>
+          <div class="auth-row-2">
+            <div class="auth-field">
+              <label for="edit-user-grado">Grado</label>
+              <input type="text" id="edit-user-grado" maxlength="20"
+                value="${escapeAttr(u.grado || '')}" placeholder="Ej. 3°">
+            </div>
+            <div class="auth-field">
+              <label for="edit-user-grupo">Grupo</label>
+              <input type="text" id="edit-user-grupo" maxlength="20"
+                value="${escapeAttr(u.grupo || '')}" placeholder="Ej. A">
+            </div>
+          </div>
+          <div id="edit-user-msg" class="auth-msg" role="status"></div>
+          <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.75rem;">
+            <button type="button" id="edit-user-cancel" class="btn btn-soft btn-small">Cancelar</button>
+            <button type="submit" id="edit-user-save" class="btn btn-primary btn-small">Guardar cambios</button>
+          </div>
+        </form>
+      `,
+    });
+
+    const form = bodyEl.querySelector('#modal-edit-user-form');
+    const nameIn = bodyEl.querySelector('#edit-user-name');
+    const gradoIn = bodyEl.querySelector('#edit-user-grado');
+    const grupoIn = bodyEl.querySelector('#edit-user-grupo');
+    const msgEl = bodyEl.querySelector('#edit-user-msg');
+    const saveBtn = bodyEl.querySelector('#edit-user-save');
+
+    bodyEl.querySelector('#edit-user-cancel')?.addEventListener('click', () => {
+      closeActiveModal();
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fullName = nameIn.value.trim();
+      const grado = gradoIn.value.trim();
+      const grupo = grupoIn.value.trim();
+
+      if (!fullName || fullName.length < 2) {
+        msgEl.textContent = 'Ingresa un nombre válido (mínimo 2 caracteres).';
+        msgEl.className = 'auth-msg auth-err';
+        nameIn.focus();
+        return;
+      }
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Guardando…';
+        await api.patch(`/admin/users/${encodeURIComponent(u.userId)}/profile`, {
+          fullName,
+          grado: grado || null,
+          grupo: grupo || null,
+        });
+
+        u.rawName = fullName;
+        u.name = fullName;
+        u.grado = grado;
+        u.grupo = grupo;
+        u.gradoGrupoLabel = [grado, grupo].filter(Boolean).join(' ') || '—';
+
+        const prof = profiles.find((p) => p.user_id === u.userId);
+        if (prof) {
+          prof.full_name = fullName;
+          prof.grado = grado || null;
+          prof.grupo = grupo || null;
+        }
+
+        closeActiveModal();
+        if (feedbackEl) {
+          feedbackEl.textContent = `✓ Datos actualizados para ${fullName} (${u.email}).`;
+          feedbackEl.className = 'auth-msg auth-ok';
+        }
+        refreshUsersTable();
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar cambios';
+        msgEl.textContent = err.message || 'Error al guardar los datos.';
+        msgEl.className = 'auth-msg auth-err';
+      }
+    });
   }
 
   bindRoleButtons();
@@ -688,7 +858,7 @@ function renderUsersDirectoryTable(userList, currentUser) {
   }
 
   return renderTable(
-    ['Nombre y Correo', 'Rol', 'Intentos', 'Promedio', 'Registro / Actividad', 'Estado', 'Permisos'],
+    ['Nombre y Correo', 'Grado / Grupo', 'Rol', 'Intentos', 'Promedio', 'Registro / Actividad', 'Estado', 'Acciones'],
     userList.map((u) => {
       const isSelf = currentUser && String(currentUser.id).toLowerCase() === String(u.userId).toLowerCase();
 
@@ -707,18 +877,22 @@ function renderUsersDirectoryTable(userList, currentUser) {
         statusBadge = '<span class="pill pill-warn">Inactivo</span>';
       }
 
-      let actionHtml = '';
+      const editBtnHtml = `
+        <button type="button" class="btn btn-soft btn-small js-edit-user"
+          data-user-id="${escapeAttr(u.userId)}">Editar datos</button>`;
+
+      let roleBtnHtml = '';
       if (isSelf) {
-        actionHtml = `<span style="font-size:.78rem;color:var(--muted);font-weight:600;">Tú (Sesión actual)</span>`;
+        roleBtnHtml = `<span style="font-size:.76rem;color:var(--muted);font-weight:600;">Sesión actual</span>`;
       } else if (!u.isAdmin) {
-        actionHtml = `
+        roleBtnHtml = `
           <button type="button" class="btn btn-gold btn-small js-toggle-role"
             data-user-id="${escapeAttr(u.userId)}"
             data-user-email="${escapeAttr(u.email)}"
             data-user-name="${escapeAttr(u.name)}"
             data-make-admin="true">Dar rol Profesor</button>`;
       } else {
-        actionHtml = `
+        roleBtnHtml = `
           <button type="button" class="btn btn-soft btn-small js-toggle-role"
             data-user-id="${escapeAttr(u.userId)}"
             data-user-email="${escapeAttr(u.email)}"
@@ -731,6 +905,7 @@ function renderUsersDirectoryTable(userList, currentUser) {
           <strong>${escapeHtml(u.name)}</strong>
           <small>${escapeHtml(u.email)}</small>
         </div>`,
+        `<span style="font-family:var(--font-mono);font-weight:600;color:var(--unach-navy);">${escapeHtml(u.gradoGrupoLabel)}</span>`,
         roleBadge,
         `${u.attempts} <small style="color:var(--muted);">(${u.correct}/${u.total})</small>`,
         u.attempts ? renderProgressBar(u.avg) : '<span style="color:var(--muted);">–</span>',
@@ -739,7 +914,7 @@ function renderUsersDirectoryTable(userList, currentUser) {
           <small>Registro: ${fmtDate(u.createdAt)}</small>
         </div>`,
         statusBadge,
-        actionHtml,
+        `<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">${editBtnHtml}${roleBtnHtml}</div>`,
       ];
     })
   );

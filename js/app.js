@@ -14,13 +14,13 @@ import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
-import { isApiConfigured } from './api.js';
-import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js';
+import { isApiConfigured } from './api.js?v=8';
+import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js?v=8';
 import { TERMS_DEFAULT, termsToHtml } from './terms.js';
-import { saveAttempt } from './results.js';
-import { renderAdminDashboard } from './admin.js?v=7';
-import { renderAdminQuestions } from './admin-questions.js?v=7';
-import { getLaw as getLawRemote } from './questions.js';
+import { saveAttempt } from './results.js?v=8';
+import { renderAdminDashboard } from './admin.js?v=8';
+import { renderAdminQuestions } from './admin-questions.js?v=8';
+import { getLaw as getLawRemote } from './questions.js?v=8';
 
 const view = document.getElementById('view');
 
@@ -103,8 +103,10 @@ function updateUserBar(user, isUserAdmin) {
   }
   const adminBadge = isUserAdmin ? `<span class="badge badge-admin">Profesor</span>` : '';
   const adminBtn = isUserAdmin ? `<a class="btn btn-gold btn-small" href="#/admin">Dashboard</a>` : '';
+  const displayName = (user.fullName || user.full_name || '').trim();
+  const labelText = displayName ? `${displayName} (${user.email})` : user.email;
   bar.innerHTML = `
-    <span class="user-email" title="${escapeAttr(user.email)}">${escapeHtml(user.email)}</span>
+    <span class="user-email" title="${escapeAttr(labelText)}">${escapeHtml(displayName || user.email)}</span>
     ${adminBadge}
     ${adminBtn}
     <button id="nav-logout-btn" class="btn btn-soft btn-small" type="button">Cerrar sesión</button>
@@ -1058,7 +1060,18 @@ function renderRegister() {
         <form id="reg-form" class="auth-form" novalidate autocomplete="on">
           <div class="auth-field">
             <label for="reg-name">Nombre completo</label>
-            <input type="text" id="reg-name" name="name" required minlength="2" maxlength="80" autocomplete="name" placeholder="Tu nombre y apellidos">
+            <input type="text" id="reg-name" name="name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Tu nombre y apellidos">
+          </div>
+
+          <div class="auth-row-2">
+            <div class="auth-field">
+              <label for="reg-grado">Grado</label>
+              <input type="text" id="reg-grado" name="grado" maxlength="20" placeholder="Ej. 3°">
+            </div>
+            <div class="auth-field">
+              <label for="reg-grupo">Grupo</label>
+              <input type="text" id="reg-grupo" name="grupo" maxlength="20" placeholder="Ej. A">
+            </div>
           </div>
 
           <div class="auth-field">
@@ -1100,6 +1113,8 @@ function renderRegister() {
 
   const form = view.querySelector('#reg-form');
   const nameInput = view.querySelector('#reg-name');
+  const gradoInput = view.querySelector('#reg-grado');
+  const grupoInput = view.querySelector('#reg-grupo');
   const emailInput = view.querySelector('#reg-email');
   const pwdInput = view.querySelector('#reg-password');
   const pwdConfInput = view.querySelector('#reg-password-confirm');
@@ -1125,6 +1140,8 @@ function renderRegister() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fullName = nameInput.value.trim();
+    const grado = gradoInput.value.trim();
+    const grupo = grupoInput.value.trim();
     const email = emailInput.value.trim();
     const password = pwdInput.value;
     const confirm = pwdConfInput.value;
@@ -1165,7 +1182,7 @@ function renderRegister() {
 
     try {
       const version = await getCurrentTermsVersion();
-      const { user, error } = await signUp(email, password, fullName, version);
+      const { user, error } = await signUp(email, password, fullName, version, { grado, grupo });
       if (error) {
         msgEl.textContent = error.message || 'Error al crear la cuenta.';
         msgEl.className = 'auth-msg auth-err';

@@ -2,7 +2,7 @@
 // Funciones de autenticación y sesión mediante la API REST del VPS.
 // Mantiene retrocompatibilidad de firmas con el frontend existente.
 
-import { api, getToken, setToken, removeToken } from './api.js';
+import { api, getToken, setToken, removeToken } from './api.js?v=8';
 
 let _cachedUser = null;
 let _userFetchPromise = null;
@@ -108,6 +108,8 @@ export async function getProfile(userId) {
     user_id: user.id,
     email: user.email,
     full_name: user.fullName || user.full_name || '',
+    grado: user.grado || null,
+    grupo: user.grupo || null,
     is_admin: Boolean(user.isAdmin ?? user.is_admin),
   };
 }
@@ -118,17 +120,23 @@ export async function getProfile(userId) {
  * @param {string} password
  * @param {string} [fullName]
  * @param {string} [termsVersion]
+ * @param {{grado?:string, grupo?:string}} [extra]
  */
-export async function signUp(email, password, fullName = '', termsVersion = '') {
+export async function signUp(email, password, fullName = '', termsVersion = '', extra = {}) {
   if (!fullName || fullName.trim().length < 2) {
     return { user: null, error: new Error('Nombre completo obligatorio.') };
   }
+
+  const cleanGrado = extra?.grado ? String(extra.grado).trim() : '';
+  const cleanGrupo = extra?.grupo ? String(extra.grupo).trim() : '';
 
   try {
     const data = await api.post('/auth/register', {
       email,
       password,
-      fullName,
+      fullName: fullName.trim(),
+      grado: cleanGrado || undefined,
+      grupo: cleanGrupo || undefined,
       termsVersion: termsVersion || undefined,
     });
 

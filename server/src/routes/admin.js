@@ -17,7 +17,7 @@ adminRouter.use(authenticateToken, requireAdmin);
 adminRouter.get('/dashboard', async (req, res, next) => {
   try {
     const [usersRes, quizRes, practiceRes, qStatsRes] = await Promise.all([
-      query(`SELECT id AS user_id, email, full_name, is_admin, created_at, last_login_at FROM eqd.users ORDER BY created_at DESC`),
+      query(`SELECT id AS user_id, email, full_name, grado, grupo, is_admin, created_at, last_login_at FROM eqd.users ORDER BY created_at DESC`),
       query(`SELECT id, user_id, section_id, subtema_id, law_id, law_name, difficulty, score, total, created_at FROM eqd.quiz_attempts ORDER BY created_at DESC LIMIT 5000`),
       query(`SELECT id, user_id, input, topic, correct, created_at FROM eqd.practice_attempts ORDER BY created_at DESC LIMIT 5000`),
       query(`SELECT section_id, difficulty, count(*)::int AS total FROM eqd.questions GROUP BY section_id, difficulty`),
@@ -71,7 +71,7 @@ adminRouter.patch('/users/:id/role', async (req, res, next) => {
       `UPDATE eqd.users
        SET is_admin = $1
        WHERE id = $2
-       RETURNING id AS user_id, email, full_name, is_admin, created_at`,
+       RETURNING id AS user_id, email, full_name, grado, grupo, is_admin, created_at`,
       [isAdmin, targetId]
     );
 
@@ -88,6 +88,73 @@ adminRouter.patch('/users/:id/role', async (req, res, next) => {
         targetUserId: targetId,
         targetEmail: rows[0].email,
         isAdmin,
+      },
+      ip: req.ip,
+    });
+
+    return res.json({
+      ok: true,
+      user: rows[0],
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const profileSchema = z.object({
+  fullName: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres.').max(120),
+  grado: z.string().trim().max(20).optional().nullable(),
+  grupo: z.string().trim().max(20).optional().nullable(),
+});
+
+/**
+ * PATCH /admin/users/:id/profile
+ * Permite a un administrador actualizar el nombre completo, grado y grupo de un usuario.
+ */
+adminRouter.patch('/users/:id/profile', async (req, res, next) => {
+  const targetId = String(req.params.id || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_USER_ID', message: 'Identificador de usuario inválido.' }
+    });
+  }
+
+  const parsed = profileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: issue?.message || 'Datos de perfil inválidos.' }
+    });
+  }
+
+  const { fullName, grado, grupo } = parsed.data;
+  const cleanGrado = grado && grado.trim() ? grado.trim() : null;
+  const cleanGrupo = grupo && grupo.trim() ? grupo.trim() : null;
+
+  try {
+    const { rows } = await query(
+      `UPDATE eqd.users
+       SET full_name = $1, grado = $2, grupo = $3
+       WHERE id = $4
+       RETURNING id AS user_id, email, full_name, grado, grupo, is_admin, created_at`,
+      [fullName, cleanGrado, cleanGrupo, targetId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: { code: 'USER_NOT_FOUND', message: 'Usuario no encontrado.' }
+      });
+    }
+
+    await logAudit({
+      userId: req.user.id,
+      action: 'admin_update_user_profile',
+      detail: {
+        targetUserId: targetId,
+        targetEmail: rows[0].email,
+        fullName,
+        grado: cleanGrado,
+        grupo: cleanGrupo,
       },
       ip: req.ip,
     });

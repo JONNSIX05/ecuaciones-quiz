@@ -5,10 +5,10 @@
 // - Editar pregunta en modal (consultando el registro completo desde la API)
 // - Subir preguntas por lote (.json) con Guía interactiva de formato, catálogo de IDs y plantilla descargable.
 
-import { isAdmin } from './auth.js';
-import { api } from './api.js';
-import { updateQuestion, deleteQuestion, insertQuestions, listQuestionsRange } from './questions.js';
-import { validateQuestionJSON } from '../data/questions/upload-schema.js';
+import { isAdmin } from './auth.js?v=8';
+import { api } from './api.js?v=8';
+import { updateQuestion, deleteQuestion, insertQuestions, listQuestionsRange } from './questions.js?v=8';
+import { validateQuestionJSON } from '../data/questions/upload-schema.js?v=8';
 import { sections } from './sections.js';
 import { isReady, sanitize } from './latex.js';
 import { openModal, closeActiveModal } from './modal.js';

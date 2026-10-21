@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS eqd.users (
                              CHECK (length(email) BETWEEN 3 AND 254 AND position('@' IN email) > 1),
   password_hash  text        NOT NULL CHECK (password_hash ~ '^\$2[aby]\$\d{2}\$'),
   full_name      text        CHECK (full_name IS NULL OR length(full_name) <= 120),
+  grado          text        CHECK (grado IS NULL OR length(grado) <= 20),
+  grupo          text        CHECK (grupo IS NULL OR length(grupo) <= 20),
   is_admin       boolean     NOT NULL DEFAULT false,
   failed_logins  integer     NOT NULL DEFAULT 0 CHECK (failed_logins >= 0),
   locked_until   timestamptz,

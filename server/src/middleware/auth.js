@@ -31,6 +31,8 @@ export async function authenticateToken(req, res, next) {
         s.expires_at,
         u.email,
         u.full_name,
+        u.grado,
+        u.grupo,
         u.is_admin,
         u.locked_until
       FROM eqd.sessions s
@@ -78,6 +80,9 @@ export async function authenticateToken(req, res, next) {
       id: row.user_id,
       email: row.email,
       fullName: row.full_name || '',
+      full_name: row.full_name || '',
+      grado: row.grado || null,
+      grupo: row.grupo || null,
       isAdmin: Boolean(row.is_admin),
     };
     req.tokenHash = tokenHash;

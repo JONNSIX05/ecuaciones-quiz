@@ -22,6 +22,8 @@ const registerSchema = z.object({
   email: z.string().trim().email().max(254),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.').max(72),
   fullName: z.string().trim().min(2, 'Nombre completo obligatorio.').max(120),
+  grado: z.string().trim().max(20).optional().nullable(),
+  grupo: z.string().trim().max(20).optional().nullable(),
   termsVersion: z.string().max(40).optional(),
 });
 
@@ -42,7 +44,9 @@ authRouter.post('/register', registerLimiter, async (req, res, next) => {
     });
   }
 
-  const { email, password, fullName, termsVersion } = parsed.data;
+  const { email, password, fullName, grado, grupo, termsVersion } = parsed.data;
+  const cleanGrado = grado && grado.trim() ? grado.trim() : null;
+  const cleanGrupo = grupo && grupo.trim() ? grupo.trim() : null;
   const ip = req.ip || req.socket.remoteAddress;
 
   try {
@@ -62,10 +66,10 @@ authRouter.post('/register', registerLimiter, async (req, res, next) => {
     const user = await withTransaction(async (client) => {
       // Inserción forzada de is_admin = false (inmune a manipulación del cliente)
       const userRes = await client.query(
-        `INSERT INTO eqd.users (email, password_hash, full_name, is_admin, last_login_at)
-         VALUES ($1, $2, $3, false, now())
-         RETURNING id, email, full_name, is_admin`,
-        [email, passwordHash, fullName]
+        `INSERT INTO eqd.users (email, password_hash, full_name, grado, grupo, is_admin, last_login_at)
+         VALUES ($1, $2, $3, $4, $5, false, now())
+         RETURNING id, email, full_name, grado, grupo, is_admin`,
+        [email, passwordHash, fullName, cleanGrado, cleanGrupo]
       );
       const createdUser = userRes.rows[0];
 
@@ -100,6 +104,9 @@ authRouter.post('/register', registerLimiter, async (req, res, next) => {
         id: user.id,
         email: user.email,
         fullName: user.full_name,
+        full_name: user.full_name,
+        grado: user.grado || null,
+        grupo: user.grupo || null,
         isAdmin: false,
       },
     });
@@ -124,7 +131,7 @@ authRouter.post('/login', loginLimiter, async (req, res, next) => {
 
   try {
     const userRes = await query(
-      `SELECT id, email, password_hash, full_name, is_admin, failed_logins, locked_until
+      `SELECT id, email, password_hash, full_name, grado, grupo, is_admin, failed_logins, locked_until
        FROM eqd.users
        WHERE email = $1`,
       [email]
@@ -212,6 +219,9 @@ authRouter.post('/login', loginLimiter, async (req, res, next) => {
         id: user.id,
         email: user.email,
         fullName: user.full_name || '',
+        full_name: user.full_name || '',
+        grado: user.grado || null,
+        grupo: user.grupo || null,
         isAdmin: Boolean(user.is_admin),
       },
     });

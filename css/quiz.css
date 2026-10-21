@@ -2213,3 +2213,17 @@ body.modal-open {
   padding-top: 0.45rem;
   border-top: 1px dashed var(--line);
 }
+
+/* Fila de 2 columnas para Grado y Grupo en registro y edición de usuario */
+.auth-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .auth-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
