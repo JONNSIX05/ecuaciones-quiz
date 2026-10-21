@@ -1,0 +1,47 @@
+# =====================================================================
+# nginx-eqd-api.conf.example
+# Configuración de proxy inverso en Nginx para eqd-quiz.duckdns.org
+# Ubicación en VPS: /etc/nginx/sites-available/eqd-quiz.duckdns.org
+# Enlace simbólico: ln -s /etc/nginx/sites-available/eqd-quiz.duckdns.org /etc/nginx/sites-enabled/
+# Luego ejecutar:   sudo certbot --nginx -d eqd-quiz.duckdns.org --redirect
+# =====================================================================
+
+limit_req_zone $binary_remote_addr zone=eqd_auth_limit:10m rate=10r/m;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name eqd-quiz.duckdns.org;
+
+    # Ocultar versión de Nginx
+    server_tokens off;
+
+    # Límite máximo de payload (1 MB)
+    client_max_body_size 1M;
+
+    # Encabezados de seguridad (el CORS lo maneja la API Express)
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Rate limit adicional en endpoints de autenticación
+    location /auth/ {
+        limit_req zone=eqd_auth_limit burst=10 nodelay;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Resto de endpoints de la API
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -1,43 +1,13 @@
 -- =====================================================================
--- Migración Supabase: Sección 01 - Álgebra (420 preguntas)
+-- Carga de preguntas: Sección 01 - Álgebra (420 preguntas)
 -- Total preguntas en este script: 420
--- Fecha de generación: 2026-10-08T18:10:16.004Z
+-- Fecha de generación: 2026-10-21T05:05:15.862Z
 -- =====================================================================
 
--- Tabla e índices base
-CREATE TABLE IF NOT EXISTS public.questions (
-  id          TEXT PRIMARY KEY,
-  section_id  TEXT NOT NULL,
-  subtema_id  TEXT NOT NULL,
-  law_id      TEXT NOT NULL,
-  difficulty  TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
-  prompt      TEXT NOT NULL,
-  options     JSONB NOT NULL,
-  explanation TEXT NOT NULL DEFAULT '',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS questions_law_idx ON public.questions (section_id, subtema_id, law_id);
-
-ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
-
--- Políticas RLS:
--- 1. Lectura pública (permite alumnos anónimos y autenticados)
-DROP POLICY IF EXISTS "questions read auth" ON public.questions;
-DROP POLICY IF EXISTS "questions read all" ON public.questions;
-CREATE POLICY "questions read all" ON public.questions
-  FOR SELECT TO anon, authenticated USING (true);
-
--- 2. Escritura restringida a administradores
-DROP POLICY IF EXISTS "questions admin write" ON public.questions;
-CREATE POLICY "questions admin write" ON public.questions
-  FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin));
+SET search_path = eqd, public;
 
 -- Lote 1 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$prod-f-01$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$producto$law$, $diff$easy$diff$, $prompt$Simplifica: $3^2 \cdot 3^4$$prompt$, $json$[{"latex":"3^6","correct":true},{"latex":"3^8","correct":false},{"latex":"9^6","correct":false},{"latex":"3^2","correct":false}]$json$::jsonb, $exp$Misma base, se suman los exponentes: $3^{2+4} = 3^6$. Multiplicar los exponentes ($3^8$) o las bases ($9^6$) es un error común.$exp$),
   ($id$prod-f-02$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$producto$law$, $diff$easy$diff$, $prompt$Simplifica: $x^5 \cdot x^3$$prompt$, $json$[{"latex":"x^8","correct":true},{"latex":"x^{15}","correct":false},{"latex":"x^2","correct":false},{"latex":"2x^8","correct":false}]$json$::jsonb, $exp$Se suman los exponentes: $x^{5+3} = x^8$. No se multiplican ($x^{15}$) ni se suman las bases.$exp$),
@@ -100,7 +70,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 2 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$potpot-m-01$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$potencia-potencia$law$, $diff$medium$diff$, $prompt$Simplifica: $3(x^2)^4$$prompt$, $json$[{"latex":"3x^8","correct":true},{"latex":"3x^6","correct":false},{"latex":"3x^{16}","correct":false},{"latex":"12x^8","correct":false}]$json$::jsonb, $exp$El coeficiente 3 queda fuera: $3 \cdot x^{2 \cdot 4} = 3x^8$. El 4 no multiplica al 3.$exp$),
   ($id$potpot-m-02$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$potencia-potencia$law$, $diff$medium$diff$, $prompt$Simplifica y evalúa: $(2^2)^3$$prompt$, $json$[{"latex":"64","correct":true},{"latex":"32","correct":false},{"latex":"12","correct":false},{"latex":"128","correct":false}]$json$::jsonb, $exp$$(2^2)^3 = 2^{2 \cdot 3} = 2^6 = 64$.$exp$),
@@ -163,7 +133,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 3 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$expneg-h-01$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$exponente-negativo$law$, $diff$hard$diff$, $prompt$Simplifica: $2^{-2} \cdot 2^3$$prompt$, $json$[{"latex":"2","correct":true},{"latex":"\\frac{1}{2}","correct":false},{"latex":"8","correct":false},{"latex":"\\frac{1}{8}","correct":false}]$json$::jsonb, $exp$Suma de exponentes: $-2 + 3 = 1$, por lo que $2^1 = 2$.$exp$),
   ($id$expneg-h-02$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$exponente-negativo$law$, $diff$hard$diff$, $prompt$Simplifica: $\frac{x^2}{x^{-3}}$$prompt$, $json$[{"latex":"x^5","correct":true},{"latex":"x^{-1}","correct":false},{"latex":"x^{-5}","correct":false},{"latex":"x^6","correct":false}]$json$::jsonb, $exp$Resta de exponentes: $2 - (-3) = 2 + 3 = 5$, por lo que $x^5$.$exp$),
@@ -226,7 +196,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 4 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$logcoc-f-01$id$, $sec$algebra$sec$, $sub$logaritmos$sub$, $law$log-cociente$law$, $diff$easy$diff$, $prompt$¿A qué es igual $\log_a(x/y)$?$prompt$, $json$[{"latex":"\\log_a x - \\log_a y","correct":true},{"latex":"\\log_a x + \\log_a y","correct":false},{"latex":"\\log_a x \\cdot \\log_a y","correct":false},{"latex":"\\frac{\\log_a x}{\\log_a y}","correct":false}]$json$::jsonb, $exp$$\log_a(x/y) = \log_a x - \log_a y$. El logaritmo de un cociente es la resta de logaritmos.$exp$),
   ($id$logcoc-f-02$id$, $sec$algebra$sec$, $sub$logaritmos$sub$, $law$log-cociente$law$, $diff$easy$diff$, $prompt$Expande: $\log_{10}(8/2)$$prompt$, $json$[{"latex":"\\log_{10} 8 - \\log_{10} 2","correct":true},{"latex":"\\log_{10} 8 + \\log_{10} 2","correct":false},{"latex":"\\frac{\\log_{10} 8}{\\log_{10} 2}","correct":false},{"latex":"\\log_{10} 6","correct":false}]$json$::jsonb, $exp$$\log_{10}(8/2) = \log_{10} 8 - \log_{10} 2$.$exp$),
@@ -289,7 +259,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 5 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$trigpit-m-01$id$, $sec$algebra$sec$, $sub$trigonometria$sub$, $law$trig-pitagorica$law$, $diff$medium$diff$, $prompt$Simplifica: $1 - \sin^2 x$$prompt$, $json$[{"latex":"\\cos^2 x","correct":true},{"latex":"\\sin^2 x","correct":false},{"latex":"1","correct":false},{"latex":"-\\cos^2 x","correct":false}]$json$::jsonb, $exp$De $\sin^2 x + \cos^2 x = 1$ se obtiene $1 - \sin^2 x = \cos^2 x$.$exp$),
   ($id$trigpit-m-02$id$, $sec$algebra$sec$, $sub$trigonometria$sub$, $law$trig-pitagorica$law$, $diff$medium$diff$, $prompt$Simplifica: $1 - \cos^2 x$$prompt$, $json$[{"latex":"\\sin^2 x","correct":true},{"latex":"\\cos^2 x","correct":false},{"latex":"1","correct":false},{"latex":"-\\sin^2 x","correct":false}]$json$::jsonb, $exp$De la identidad fundamental: $1 - \cos^2 x = \sin^2 x$.$exp$),
@@ -352,7 +322,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 6 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$faccom-h-01$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$factor-comun$law$, $diff$hard$diff$, $prompt$Factoriza: $2x^3 + 4x^2 + 6x$$prompt$, $json$[{"latex":"2x(x^2 + 2x + 3)","correct":true},{"latex":"2(x^3 + 2x^2 + 3x)","correct":false},{"latex":"2x(x^2 + 2x + 6)","correct":false},{"latex":"2x^2(x + 2 + 3)","correct":false}]$json$::jsonb, $exp$El máximo factor común es $2x$: $2x^3 + 4x^2 + 6x = 2x(x^2 + 2x + 3)$.$exp$),
   ($id$faccom-h-02$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$factor-comun$law$, $diff$hard$diff$, $prompt$Factoriza: $ab + ac + ad$$prompt$, $json$[{"latex":"a(b + c + d)","correct":true},{"latex":"a(bcd)","correct":false},{"latex":"a(b + c) + d","correct":false},{"latex":"a(b + c + d + a)","correct":false}]$json$::jsonb, $exp$El factor común es $a$: $ab + ac + ad = a(b + c + d)$.$exp$),
@@ -415,7 +385,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 7 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$difcuad-f-01$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$diferencia-cuadrados$law$, $diff$easy$diff$, $prompt$Factoriza: $x^2 - 9$$prompt$, $json$[{"latex":"(x + 3)(x - 3)","correct":true},{"latex":"(x + 3)^2","correct":false},{"latex":"(x - 3)^2","correct":false},{"latex":"(x + 9)(x - 1)","correct":false}]$json$::jsonb, $exp$$x^2 - 9 = x^2 - 3^2 = (x+3)(x-3)$.$exp$),
   ($id$difcuad-f-02$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$diferencia-cuadrados$law$, $diff$easy$diff$, $prompt$Factoriza: $a^2 - b^2$$prompt$, $json$[{"latex":"(a + b)(a - b)","correct":true},{"latex":"(a + b)^2","correct":false},{"latex":"(a - b)^2","correct":false},{"latex":"a^2 - b","correct":false}]$json$::jsonb, $exp$$a^2 - b^2 = (a+b)(a-b)$. Es la diferencia de cuadrados.$exp$),
@@ -478,7 +448,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 8 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$tricp-m-01$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$trinomio-cuadrado-perfecto$law$, $diff$medium$diff$, $prompt$Factoriza: $4x^2 + 12x + 9$$prompt$, $json$[{"latex":"(2x + 3)^2","correct":true},{"latex":"(2x + 3)(2x - 3)","correct":false},{"latex":"(2x + 9)^2","correct":false},{"latex":"(4x + 9)^2","correct":false}]$json$::jsonb, $exp$$4x^2 + 12x + 9 = (2x+3)^2$ porque $(2x)^2 = 4x^2$, $2(2x)(3) = 12x$ y $3^2 = 9$.$exp$),
   ($id$tricp-m-02$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$trinomio-cuadrado-perfecto$law$, $diff$medium$diff$, $prompt$Factoriza: $9x^2 - 6x + 1$$prompt$, $json$[{"latex":"(3x - 1)^2","correct":true},{"latex":"(3x + 1)^2","correct":false},{"latex":"(3x - 1)(3x + 1)","correct":false},{"latex":"(9x - 1)^2","correct":false}]$json$::jsonb, $exp$$9x^2 - 6x + 1 = (3x-1)^2$ porque $(3x)^2 = 9x^2$ y $2(3x)(1) = 6x$.$exp$),
@@ -541,7 +511,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 9 (20 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$cuad-h-01$id$, $sec$algebra$sec$, $sub$cuadratica$sub$, $law$cuadratica-formula-general$law$, $diff$hard$diff$, $prompt$Resuelve: $x^2 - 2x - 8 = 0$$prompt$, $json$[{"latex":"x = 4 \\text{ y } x = -2","correct":true},{"latex":"x = -4 \\text{ y } x = 2","correct":false},{"latex":"x = 2 \\text{ y } x = 4","correct":false},{"latex":"x = -2 \\text{ y } x = 8","correct":false}]$json$::jsonb, $exp$Factoriza: $(x-4)(x+2) = 0$, por lo que $x = 4$ o $x = -2$.$exp$),
   ($id$cuad-h-02$id$, $sec$algebra$sec$, $sub$cuadratica$sub$, $law$cuadratica-formula-general$law$, $diff$hard$diff$, $prompt$Resuelve: $2x^2 + 3x - 2 = 0$$prompt$, $json$[{"latex":"x = \\frac{1}{2} \\text{ y } x = -2","correct":true},{"latex":"x = -\\frac{1}{2} \\text{ y } x = 2","correct":false},{"latex":"x = 2 \\text{ y } x = -\\frac{1}{2}","correct":false},{"latex":"x = 1 \\text{ y } x = -2","correct":false}]$json$::jsonb, $exp$$x = \frac{-3 \pm \sqrt{9 + 16}}{4} = \frac{-3 \pm 5}{4}$, que da $\frac{1}{2}$ y $-2$.$exp$),
@@ -574,4 +544,4 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Limpieza de filas de prueba
-DELETE FROM public.questions WHERE id = 'test-debug';
+DELETE FROM eqd.questions WHERE id = 'test-debug';

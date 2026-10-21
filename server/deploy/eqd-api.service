@@ -1,0 +1,38 @@
+[Unit]
+Description=API Backend Quiz Ecuaciones Diferenciales
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=eqd
+Group=eqd
+WorkingDirectory=/opt/eqd-api
+EnvironmentFile=/etc/eqd-api/env
+ExecStart=/usr/bin/node src/index.js
+
+# Recuperación automática
+Restart=on-failure
+RestartSec=5s
+
+# Endurecimiento y contención de seguridad (Linux Sandbox)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+MemoryMax=512M
+LimitNOFILE=65536
+
+# Logs estándar hacia journalctl
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=eqd-api
+
+[Install]
+WantedBy=multi-user.target

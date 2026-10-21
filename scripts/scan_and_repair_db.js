@@ -10,8 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://vaxpiyhwrfzjukevzslo.supabase.co';
-const ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_JHC5u4DBYAM16R2srAtSzA_3KhZyqL5';
+const API_URL = process.env.API_URL || 'https://eqd-quiz.duckdns.org';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.argv[2] || '';
 const ADMIN_PW = process.env.ADMIN_PW || process.argv[3] || '';
 
@@ -118,29 +117,30 @@ async function loadLocalQuestions() {
 }
 
 async function getAdminToken() {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  const res = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
-    headers: { 'apikey': ANON_KEY, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PW })
   });
   const data = await res.json();
-  if (!data.access_token) {
+  if (!data.token) {
     throw new Error(`Error de autenticación: ${JSON.stringify(data)}`);
   }
-  return data.access_token;
+  return data.token;
 }
 
-async function scanDbQuestions() {
+async function scanDbQuestions(token) {
   const corrupted = [];
   let total = 0;
   let offset = 0;
-  const limit = 200;
+  const limit = 100;
 
   while (true) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/questions?select=id,prompt,options,explanation&offset=${offset}&limit=${limit}`, {
-      headers: { 'apikey': ANON_KEY }
+    const res = await fetch(`${API_URL}/admin/questions?from=${offset}&to=${offset + limit - 1}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
     });
-    const rows = await res.json();
+    const data = await res.json();
+    const rows = data.rows || [];
     if (!rows || rows.length === 0) break;
     total += rows.length;
     for (const r of rows) {
@@ -149,16 +149,21 @@ async function scanDbQuestions() {
         corrupted.push({ id: r.id, prompt: r.prompt });
       }
     }
-    offset += limit;
+    offset += rows.length;
+    if (total >= (data.count || 0)) break;
   }
   return { total, corrupted };
 }
 
 async function main() {
-  console.log('=== VERIFICACIÓN Y REPARACIÓN DE PREGUNTAS EN SUPABASE ===\n');
+  console.log(`=== VERIFICACIÓN Y REPARACIÓN DE PREGUNTAS EN API (${API_URL}) ===\n`);
 
-  console.log('1. Escaneando estado actual en Supabase...');
-  const beforeScan = await scanDbQuestions();
+  console.log('1. Obteniendo sesión de administrador en la API...');
+  const token = await getAdminToken();
+  console.log('   Sesión obtenida con éxito.');
+
+  console.log('\n2. Escaneando estado actual en la base de datos...');
+  const beforeScan = await scanDbQuestions(token);
   console.log(`   Total en BD: ${beforeScan.total}`);
   console.log(`   Preguntas con caracteres corruptos (mojibake): ${beforeScan.corrupted.length}`);
   if (beforeScan.corrupted.length > 0) {
@@ -166,27 +171,21 @@ async function main() {
     beforeScan.corrupted.slice(0, 5).forEach(c => console.log(`     - [${c.id}] ${c.prompt}`));
   }
 
-  console.log('\n2. Obteniendo sesión de administrador en Supabase...');
-  const token = await getAdminToken();
-  console.log('   Sesión obtenida con éxito.');
-
   console.log('\n3. Cargando preguntas limpias del código fuente...');
   const localQuestions = await loadLocalQuestions();
   console.log(`   Preguntas locales preparadas: ${localQuestions.length}`);
 
-  console.log('\n4. Sincronizando (upsert) preguntas a Supabase en lotes...');
+  console.log('\n4. Sincronizando (upsert) preguntas a la API en lotes...');
   const batchSize = 50;
   let successCount = 0;
 
   for (let i = 0; i < localQuestions.length; i += batchSize) {
     const batch = localQuestions.slice(i, i + batchSize);
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/questions`, {
+    const res = await fetch(`${API_URL}/admin/questions`, {
       method: 'POST',
       headers: {
-        'apikey': ANON_KEY,
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(batch)
     });
@@ -201,16 +200,15 @@ async function main() {
   console.log(`\n   ✓ ${successCount} preguntas sincronizadas correctamente.`);
 
   console.log('\n5. Eliminando fila de prueba test-debug si existe...');
-  await fetch(`${SUPABASE_URL}/rest/v1/questions?id=eq.test-debug`, {
+  await fetch(`${API_URL}/admin/questions/test-debug`, {
     method: 'DELETE',
     headers: {
-      'apikey': ANON_KEY,
       'Authorization': `Bearer ${token}`
     }
   });
 
-  console.log('\n6. Verificando estado final en Supabase...');
-  const afterScan = await scanDbQuestions();
+  console.log('\n6. Verificando estado final en la base de datos...');
+  const afterScan = await scanDbQuestions(token);
   console.log(`   Total preguntas en BD: ${afterScan.total}`);
   console.log(`   Preguntas con mojibake restantes: ${afterScan.corrupted.length}`);
 

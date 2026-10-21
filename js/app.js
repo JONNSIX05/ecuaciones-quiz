@@ -14,7 +14,7 @@ import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
-import { getSupabase, isSupabaseReady } from './supabase.js';
+import { isApiConfigured } from './api.js';
 import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js';
 import { TERMS_DEFAULT, termsToHtml } from './terms.js';
 import { saveAttempt } from './results.js';
@@ -127,8 +127,8 @@ async function route() {
   const hash = window.location.hash || '#/';
   const seg = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
 
-  // Verificación de sesión en Supabase
-  if (isSupabaseReady()) {
+  // Verificacion de sesion en API
+  if (isApiConfigured()) {
     if (!session) {
       session = await getSession();
       if (session) {
@@ -836,7 +836,7 @@ function renderResult(section, law, sub) {
   const total = session.questions.length;
   const level = meterLevel(score, total);
 
-  // Persistencia en Supabase (con fallback a localStorage) — fire-and-forget.
+  // Persistencia en la API (con fallback a localStorage) — fire-and-forget.
   saveAttempt({
     sectionId: section.id,
     subtemaId: sub.id,
@@ -1210,7 +1210,7 @@ async function boot() {
     });
   }
 
-  if (isSupabaseReady()) {
+  if (isApiConfigured()) {
     session = await getSession();
     if (session) {
       window.__currentEmail = session.user?.email || '';

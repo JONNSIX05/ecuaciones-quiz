@@ -1,18 +1,35 @@
 // js/auth.js
-// Funciones de autenticación: signUp, signIn, signOut, getSession, isAdmin.
-// Incluye helpers de aceptación de Términos y Condiciones.
+// Funciones de autenticación y sesión mediante la API REST del VPS.
+// Mantiene retrocompatibilidad de firmas con el frontend existente.
 
-import { getSupabase } from './supabase.js';
+import { api, getToken, setToken, removeToken } from './api.js';
+
+let _cachedUser = null;
+let _userFetchPromise = null;
+
+function clearCache() {
+  _cachedUser = null;
+  _userFetchPromise = null;
+}
 
 /**
  * Devuelve la sesión activa o null.
  * @returns {Promise<object|null>}
  */
 export async function getSession() {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb.auth.getSession();
-  return data.session ?? null;
+  const token = getToken();
+  if (!token) {
+    clearCache();
+    return null;
+  }
+
+  const user = await getUser();
+  if (!user) return null;
+
+  return {
+    access_token: token,
+    user,
+  };
 }
 
 /**
@@ -20,155 +37,162 @@ export async function getSession() {
  * @returns {Promise<object|null>}
  */
 export async function getUser() {
-  // No llamar a sb.auth.getUser() — ese endpoint cuelga cuando no hay sesión
-  // y bloquea la UI. En su lugar leemos la sesión local (instantáneo).
-  // Si necesitamos un usuario fresco (post-signIn), usamos getSession().user.
-  const session = await getSession();
-  return session?.user ?? null;
+  const token = getToken();
+  if (!token) {
+    clearCache();
+    return null;
+  }
+
+  if (_cachedUser) return _cachedUser;
+  if (_userFetchPromise) return _userFetchPromise;
+
+  _userFetchPromise = (async () => {
+    try {
+      const data = await api.get('/auth/me');
+      _cachedUser = data?.user || null;
+      return _cachedUser;
+    } catch (_) {
+      clearCache();
+      return null;
+    } finally {
+      _userFetchPromise = null;
+    }
+  })();
+
+  return _userFetchPromise;
 }
 
 /**
  * Devuelve la versión actual de Términos y Condiciones.
- * (Lee de la función SQL creada en la migración.)
  */
 export async function getCurrentTermsVersion() {
-  const sb = getSupabase();
-  if (!sb) return 'v1-2026-05';
   try {
-    const { data } = await sb.rpc('current_terms_version');
-    if (data) return data;
+    const data = await api.get('/terms/current');
+    return data?.version || 'v1-2026-05';
   } catch (_) {
-    // Fallback: usar el valor por defecto de la migración.
+    return 'v1-2026-05';
   }
-  return 'v1-2026-05';
 }
 
 /**
  * Devuelve la última aceptación del usuario actual.
  */
-export async function getLatestTermsAcceptance(userId) {
-  const sb = getSupabase();
-  if (!sb || !userId) return null;
-  const { data } = await sb
-    .from('terms_acceptance')
-    .select('terms_version, accepted_at')
-    .eq('user_id', userId)
-    .order('accepted_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data ?? null;
+export async function getLatestTermsAcceptance(_userId) {
+  try {
+    const data = await api.get('/terms/me');
+    return data?.latest || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /**
- * Registra la aceptación de términos del usuario.
+ * Registra la aceptación de términos del usuario actual.
  */
-export async function acceptTerms(userId, termsVersion) {
-  const sb = getSupabase();
-  if (!sb || !userId) return { error: new Error('NO_PARAMS') };
-  const { error } = await sb
-    .from('terms_acceptance')
-    .insert({ user_id: userId, terms_version: termsVersion });
-  return { error };
+export async function acceptTerms(_userId, termsVersion) {
+  try {
+    await api.post('/terms/accept', { termsVersion });
+    return { error: null };
+  } catch (err) {
+    return { error: err };
+  }
 }
 
 /**
  * Devuelve el perfil (incluido is_admin) del usuario actual.
  */
 export async function getProfile(userId) {
-  const sb = getSupabase();
-  if (!sb || !userId) return null;
-  const { data, error } = await sb
-    .from('profiles')
-    .select('user_id, email, full_name, is_admin, created_at')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) return null;
-  return data ?? null;
+  const user = await getUser();
+  if (!user || (userId && user.id !== userId)) return null;
+  return {
+    user_id: user.id,
+    email: user.email,
+    full_name: user.fullName || user.full_name || '',
+    is_admin: Boolean(user.isAdmin ?? user.is_admin),
+  };
 }
 
 /**
- * Registra un usuario nuevo y lo da de alta en profiles.
+ * Registra un usuario nuevo y guarda el token recibido.
  * @param {string} email
  * @param {string} password
  * @param {string} [fullName]
  * @param {string} [termsVersion]
  */
 export async function signUp(email, password, fullName = '', termsVersion = '') {
-  const sb = getSupabase();
-  if (!sb) return { user: null, error: new Error('SUPABASE_NOT_READY') };
   if (!fullName || fullName.trim().length < 2) {
     return { user: null, error: new Error('Nombre completo obligatorio.') };
   }
-  const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) return { user: null, error };
 
-  // Insertar fila en profiles + (opcional) terms_acceptance.
-  if (data.user) {
-    try {
-      await sb.from('profiles').upsert({
-        user_id: data.user.id,
-        email,
-        full_name: fullName || null,
-        is_admin: false,
-      });
-      if (termsVersion) {
-        await sb
-          .from('terms_acceptance')
-          .insert({ user_id: data.user.id, terms_version: termsVersion });
-      }
-    } catch (_) {
-      // Las inserciones son best-effort; el login funciona sin ellas.
+  try {
+    const data = await api.post('/auth/register', {
+      email,
+      password,
+      fullName,
+      termsVersion: termsVersion || undefined,
+    });
+
+    if (data.token) {
+      setToken(data.token);
+      _cachedUser = data.user;
     }
+
+    return { user: data.user, error: null };
+  } catch (err) {
+    return { user: null, error: err };
   }
-  return { user: data.user, error: null };
 }
 
 /**
- * Inicia sesión.
+ * Inicia sesión y almacena el token Bearer en almacenamiento local.
  */
 export async function signIn(email, password) {
-  const sb = getSupabase();
-  if (!sb) return { user: null, error: new Error('SUPABASE_NOT_READY') };
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return { user: null, error };
-  return { user: data.user, session: data.session, error: null };
+  try {
+    const data = await api.post('/auth/login', { email, password });
+    if (data.token) {
+      setToken(data.token);
+      _cachedUser = data.user;
+    }
+    return {
+      user: data.user,
+      session: { access_token: data.token, user: data.user },
+      error: null,
+    };
+  } catch (err) {
+    clearCache();
+    return { user: null, session: null, error: err };
+  }
 }
 
 /**
- * Cierra sesión.
+ * Cierra sesión revocando el token en el servidor y limpiando el estado local.
  */
 export async function signOut() {
-  const sb = getSupabase();
-  if (!sb) return;
-  await sb.auth.signOut();
+  try {
+    await api.post('/auth/logout', {});
+  } catch (_) {
+    // Si la red falla, igualmente limpiamos las credenciales locales
+  } finally {
+    removeToken();
+    clearCache();
+  }
 }
 
 /**
- * Devuelve true si el usuario actual tiene is_admin = true en `profiles`.
+ * Devuelve true si el usuario actual tiene rol de administrador.
  */
 export async function isAdmin() {
-  const sb = getSupabase();
-  if (!sb) return false;
   const user = await getUser();
-  if (!user) return false;
-  const { data, error } = await sb
-    .from('profiles')
-    .select('is_admin')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (error) return false;
-  return Boolean(data?.is_admin);
+  return Boolean(user && (user.isAdmin ?? user.is_admin));
 }
 
 /**
  * Devuelve true si el usuario actual ha aceptado la versión actual de Términos.
  */
 export async function hasAcceptedCurrentTerms() {
-  const sb = getSupabase();
-  if (!sb) return false;
   const user = await getUser();
   if (!user) return false;
   const current = await getCurrentTermsVersion();
   const last = await getLatestTermsAcceptance(user.id);
-  return Boolean(last && last.terms_version === current);
+  return Boolean(last && last.termsVersion === current);
 }

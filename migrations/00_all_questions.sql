@@ -1,43 +1,13 @@
 -- =====================================================================
--- Migración Supabase: Catálogo Completo Global (758 preguntas)
+-- Carga de preguntas: Catálogo Completo Global (758 preguntas)
 -- Total preguntas en este script: 758
--- Fecha de generación: 2026-10-08T18:10:16.020Z
+-- Fecha de generación: 2026-10-21T05:05:15.873Z
 -- =====================================================================
 
--- Tabla e índices base
-CREATE TABLE IF NOT EXISTS public.questions (
-  id          TEXT PRIMARY KEY,
-  section_id  TEXT NOT NULL,
-  subtema_id  TEXT NOT NULL,
-  law_id      TEXT NOT NULL,
-  difficulty  TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
-  prompt      TEXT NOT NULL,
-  options     JSONB NOT NULL,
-  explanation TEXT NOT NULL DEFAULT '',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS questions_law_idx ON public.questions (section_id, subtema_id, law_id);
-
-ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
-
--- Políticas RLS:
--- 1. Lectura pública (permite alumnos anónimos y autenticados)
-DROP POLICY IF EXISTS "questions read auth" ON public.questions;
-DROP POLICY IF EXISTS "questions read all" ON public.questions;
-CREATE POLICY "questions read all" ON public.questions
-  FOR SELECT TO anon, authenticated USING (true);
-
--- 2. Escritura restringida a administradores
-DROP POLICY IF EXISTS "questions admin write" ON public.questions;
-CREATE POLICY "questions admin write" ON public.questions
-  FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin));
+SET search_path = eqd, public;
 
 -- Lote 1 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$limsus-f-01$id$, $sec$calculo-diferencial$sec$, $sub$limites$sub$, $law$lim-sustitucion$law$, $diff$easy$diff$, $prompt$¿Cómo evalúas $\lim_{x \to 2} (3x + 1)$?$prompt$, $json$[{"latex":"\\text{Sustitución directa}","correct":true},{"latex":"\\text{Factorización}","correct":false},{"latex":"\\text{Racionalización}","correct":false},{"latex":"\\text{Regla de L'Hôpital}","correct":false}]$json$::jsonb, $exp$$3x + 1$ es un polinomio, continuo en todo $\mathbb{R}$: basta sustituir $x = 2$.$exp$),
   ($id$limsus-f-02$id$, $sec$calculo-diferencial$sec$, $sub$limites$sub$, $law$lim-sustitucion$law$, $diff$easy$diff$, $prompt$Calcula: $\lim_{x \to 2} (3x + 1)$$prompt$, $json$[{"latex":"7","correct":true},{"latex":"6","correct":false},{"latex":"5","correct":false},{"latex":"1","correct":false}]$json$::jsonb, $exp$Sustituye directamente: $3(2) + 1 = 7$.$exp$),
@@ -100,7 +70,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 2 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$derb-h-02$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Una recta horizontal $y = c$ tiene pendiente...$prompt$, $json$[{"latex":"0, \\text{ por eso } \\frac{d}{dx}(c) = 0","correct":true},{"latex":"1, \\text{ por eso } \\frac{d}{dx}(c) = 1","correct":false},{"latex":"c","correct":false},{"latex":"\\text{Infinita}","correct":false}]$json$::jsonb, $exp$La derivada es la pendiente de la recta tangente: una recta horizontal tiene pendiente 0.$exp$),
   ($id$derb-f-03$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$easy$diff$, $prompt$Deriva: $f(x) = x$$prompt$, $json$[{"latex":"1","correct":true},{"latex":"0","correct":false},{"latex":"x","correct":false},{"latex":"x^2","correct":false}]$json$::jsonb, $exp$Fórmula II: $\frac{d}{dx}(x) = 1$.$exp$),
@@ -163,7 +133,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 3 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$derb-h-18$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Deriva: $f(x) = \frac{\ln x}{x}$$prompt$, $json$[{"latex":"\\frac{1 - \\ln x}{x^2}","correct":true},{"latex":"\\frac{1 + \\ln x}{x^2}","correct":false},{"latex":"\\frac{1}{x^2}","correct":false},{"latex":"\\frac{\\ln x - 1}{x^2}","correct":false}]$json$::jsonb, $exp$Fórmula VII: $\frac{x \cdot \frac{1}{x} - \ln x}{x^2} = \frac{1 - \ln x}{x^2}$.$exp$),
   ($id$derb-h-19$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Si $f(x) = \frac{x}{x + 1}$, ¿cuánto vale $f'(1)$?$prompt$, $json$[{"latex":"\\frac{1}{4}","correct":true},{"latex":"\\frac{1}{2}","correct":false},{"latex":"1","correct":false},{"latex":"\\frac{3}{4}","correct":false}]$json$::jsonb, $exp$$f'(x) = \frac{(x+1) - x}{(x+1)^2} = \frac{1}{(x+1)^2}$; en $x = 1$: $\frac{1}{4}$.$exp$),
@@ -226,7 +196,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 4 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$derl-h-08$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$¿Por qué $f(x) = x^{\sin x}$ no se deriva con la regla de la potencia?$prompt$, $json$[{"latex":"\\text{Porque el exponente } \\sin x \\text{ no es constante}","correct":true},{"latex":"\\text{Porque la base es } x","correct":false},{"latex":"\\text{Porque } \\sin x \\text{ no tiene derivada}","correct":false},{"latex":"\\text{Sí se puede: } (\\sin x) x^{\\sin x - 1}","correct":false}]$json$::jsonb, $exp$La potencia (VI) exige exponente constante. Aquí ambos varían: se necesita la fórmula XII.$exp$),
   ($id$derl-h-09$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Deriva: $f(x) = x^e$$prompt$, $json$[{"latex":"e x^{e-1}","correct":true},{"latex":"x^e \\ln x","correct":false},{"latex":"e x^e","correct":false},{"latex":"x^e(\\ln x + e)","correct":false}]$json$::jsonb, $exp$El exponente $e$ es constante: es potencia (VIa), no derivación logarítmica. Queda $e x^{e-1}$.$exp$),
@@ -289,7 +259,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 5 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$int-f-18$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$easy$diff$, $prompt$Calcula: $\int (x^2 + x)\,dx$$prompt$, $json$[{"latex":"\\frac{x^3}{3} + \\frac{x^2}{2} + C","correct":true},{"latex":"x^3 + x^2 + C","correct":false},{"latex":"2x + 1 + C","correct":false},{"latex":"\\frac{x^3}{3} + x + C","correct":false}]$json$::jsonb, $exp$Fórmula (1): se integra término a término.$exp$),
   ($id$int-f-19$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$easy$diff$, $prompt$Calcula: $\int (\sin x + \cos x)\,dx$$prompt$, $json$[{"latex":"-\\cos x + \\sin x + C","correct":true},{"latex":"\\cos x + \\sin x + C","correct":false},{"latex":"-\\cos x - \\sin x + C","correct":false},{"latex":"\\cos x - \\sin x + C","correct":false}]$json$::jsonb, $exp$Fórmulas (1), (8) y (9): $-\cos x + \sin x + C$.$exp$),
@@ -352,7 +322,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 6 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$int-h-08$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$hard$diff$, $prompt$Calcula: $\int \sqrt{x^2 + 4}\,dx$$prompt$, $json$[{"latex":"\\frac{x}{2}\\sqrt{x^2+4} + 2\\ln\\left|x + \\sqrt{x^2+4}\\right| + C","correct":true},{"latex":"\\frac{x}{2}\\sqrt{x^2+4} + \\ln\\left|x + \\sqrt{x^2+4}\\right| + C","correct":false},{"latex":"\\frac{x}{2}\\sqrt{x^2+4} + C","correct":false},{"latex":"\\frac{x}{2}\\sqrt{x^2+4} - 2\\ln\\left|x + \\sqrt{x^2+4}\\right| + C","correct":false}]$json$::jsonb, $exp$Fórmula (23) con $a = 2$: $\frac{x}{2}\sqrt{x^2+4} + \frac{4}{2}\ln|x + \sqrt{x^2+4}| + C$.$exp$),
   ($id$int-h-09$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$hard$diff$, $prompt$Calcula: $\int \sqrt{4 - x^2}\,dx$$prompt$, $json$[{"latex":"\\frac{x}{2}\\sqrt{4-x^2} + 2\\arcsin\\frac{x}{2} + C","correct":true},{"latex":"\\frac{x}{2}\\sqrt{4-x^2} + \\arcsin\\frac{x}{2} + C","correct":false},{"latex":"\\frac{x}{2}\\sqrt{4-x^2} + C","correct":false},{"latex":"\\arcsin\\frac{x}{2} + C","correct":false}]$json$::jsonb, $exp$Fórmula (22) con $a = 2$: $\frac{x}{2}\sqrt{4-x^2} + \frac{4}{2}\arcsin\frac{x}{2} + C$.$exp$),
@@ -415,7 +385,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 7 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$fra-f-08$id$, $sec$calculo-integral$sec$, $sub$fracciones-parciales$sub$, $law$fracciones-parciales$law$, $diff$easy$diff$, $prompt$¿Se puede factorizar $x^2 - 1$?$prompt$, $json$[{"latex":"\\text{Sí: } (x-1)(x+1)","correct":true},{"latex":"\\text{No, es irreducible}","correct":false},{"latex":"\\text{Sí: } (x-1)^2","correct":false},{"latex":"\\text{Sí: } x(x-1)","correct":false}]$json$::jsonb, $exp$Diferencia de cuadrados: $x^2 - 1 = (x-1)(x+1)$.$exp$),
   ($id$fra-f-09$id$, $sec$calculo-integral$sec$, $sub$fracciones-parciales$sub$, $law$fracciones-parciales$law$, $diff$easy$diff$, $prompt$¿Qué tipo de factor es $(x - 3)$ en un denominador?$prompt$, $json$[{"latex":"\\text{Factor lineal simple}","correct":true},{"latex":"\\text{Factor lineal repetido}","correct":false},{"latex":"\\text{Factor cuadrático irreducible}","correct":false},{"latex":"\\text{No se puede descomponer}","correct":false}]$json$::jsonb, $exp$Es lineal y de multiplicidad 1: aporta un término $\frac{A}{x-3}$.$exp$),
@@ -478,7 +448,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 8 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$prod-h-03$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$producto$law$, $diff$hard$diff$, $prompt$Simplifica: $x^2 \cdot x^3 \cdot x$$prompt$, $json$[{"latex":"x^6","correct":true},{"latex":"x^5","correct":false},{"latex":"x^7","correct":false},{"latex":"3x^6","correct":false}]$json$::jsonb, $exp$Tres factores con la misma base: $x^{2+3+1} = x^6$ (recuerda $x = x^1$).$exp$),
   ($id$prod-h-04$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$producto$law$, $diff$hard$diff$, $prompt$Si $5^2 \cdot 5^n = 5^7$, ¿cuál es el valor de $n$?$prompt$, $json$[{"latex":"5","correct":true},{"latex":"2","correct":false},{"latex":"7","correct":false},{"latex":"9","correct":false}]$json$::jsonb, $exp$Igualamos exponentes: $2 + n = 7$, por lo que $n = 5$.$exp$),
@@ -541,7 +511,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 9 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$potpro-f-03$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$potencia-producto$law$, $diff$easy$diff$, $prompt$Simplifica: $(2x)^2$$prompt$, $json$[{"latex":"4x^2","correct":true},{"latex":"2x^2","correct":false},{"latex":"4x","correct":false},{"latex":"2x","correct":false}]$json$::jsonb, $exp$Eleva ambos factores al cuadrado: $2^2 \cdot x^2 = 4x^2$.$exp$),
   ($id$potpro-f-04$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$potencia-producto$law$, $diff$easy$diff$, $prompt$Simplifica: $(3y)^2$$prompt$, $json$[{"latex":"9y^2","correct":true},{"latex":"6y^2","correct":false},{"latex":"3y^2","correct":false},{"latex":"9y","correct":false}]$json$::jsonb, $exp$$3^2 \cdot y^2 = 9y^2$. El 3 también se eleva al cuadrado.$exp$),
@@ -604,7 +574,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 10 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$expfrac-m-03$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$exponente-fraccionario$law$, $diff$medium$diff$, $prompt$Simplifica: $16^{3/4}$$prompt$, $json$[{"latex":"8","correct":true},{"latex":"4","correct":false},{"latex":"12","correct":false},{"latex":"64","correct":false}]$json$::jsonb, $exp$$16^{3/4} = (\sqrt[4]{16})^3 = 2^3 = 8$, porque $2^4 = 16$.$exp$),
   ($id$expfrac-m-04$id$, $sec$algebra$sec$, $sub$exponentes$sub$, $law$exponente-fraccionario$law$, $diff$medium$diff$, $prompt$Simplifica: $x^{3/2}$$prompt$, $json$[{"latex":"x\\sqrt{x}","correct":true},{"latex":"\\sqrt{x}","correct":false},{"latex":"x^3","correct":false},{"latex":"x^{2/3}","correct":false}]$json$::jsonb, $exp$$x^{3/2} = x^{1 + 1/2} = x \cdot x^{1/2} = x\sqrt{x}$.$exp$),
@@ -667,7 +637,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 11 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$logcoc-h-03$id$, $sec$algebra$sec$, $sub$logaritmos$sub$, $law$log-cociente$law$, $diff$hard$diff$, $prompt$Simplifica: $\log_2(x^3/y) - \log_2 x$$prompt$, $json$[{"latex":"\\log_2(x^2/y)","correct":true},{"latex":"\\log_2(x^3/y)","correct":false},{"latex":"\\log_2(x^2 y)","correct":false},{"latex":"\\log_2(x^2)","correct":false}]$json$::jsonb, $exp$$\log_2(x^3/y) - \log_2 x = \log_2\left(\frac{x^3/y}{x}\right) = \log_2(x^2/y)$.$exp$),
   ($id$logcoc-h-04$id$, $sec$algebra$sec$, $sub$logaritmos$sub$, $law$log-cociente$law$, $diff$hard$diff$, $prompt$Si $\log 2 = a$ y $\log 5 = b$, ¿cuánto vale $\log(2/5)$?$prompt$, $json$[{"latex":"a - b","correct":true},{"latex":"a + b","correct":false},{"latex":"b - a","correct":false},{"latex":"a / b","correct":false}]$json$::jsonb, $exp$$\log(2/5) = \log 2 - \log 5 = a - b$.$exp$),
@@ -730,7 +700,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 12 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$trigrec-f-03$id$, $sec$algebra$sec$, $sub$trigonometria$sub$, $law$trig-reciprocas$law$, $diff$easy$diff$, $prompt$¿Cuál es el recíproco de $\cos x$?$prompt$, $json$[{"latex":"\\sec x","correct":true},{"latex":"\\csc x","correct":false},{"latex":"\\tan x","correct":false},{"latex":"\\cot x","correct":false}]$json$::jsonb, $exp$El recíproco de $\cos x$ es $\sec x$.$exp$),
   ($id$trigrec-f-04$id$, $sec$algebra$sec$, $sub$trigonometria$sub$, $law$trig-reciprocas$law$, $diff$easy$diff$, $prompt$¿A qué es igual $\cot x$?$prompt$, $json$[{"latex":"\\frac{1}{\\tan x}","correct":true},{"latex":"\\tan x","correct":false},{"latex":"\\frac{1}{\\sin x}","correct":false},{"latex":"\\frac{1}{\\cos x}","correct":false}]$json$::jsonb, $exp$$\cot x$ es el recíproco de $\tan x$: $\cot x = \frac{1}{\tan x}$.$exp$),
@@ -793,7 +763,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 13 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$bincuad-m-03$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$binomio-cuadrado$law$, $diff$medium$diff$, $prompt$Desarrolla: $(-x + 4)^2$$prompt$, $json$[{"latex":"x^2 - 8x + 16","correct":true},{"latex":"x^2 + 8x + 16","correct":false},{"latex":"x^2 - 16","correct":false},{"latex":"-x^2 + 8x - 16","correct":false}]$json$::jsonb, $exp$$(-x+4)^2 = (-x)^2 + 2(-x)(4) + 4^2 = x^2 - 8x + 16$.$exp$),
   ($id$bincuad-m-04$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$binomio-cuadrado$law$, $diff$medium$diff$, $prompt$Desarrolla: $(\frac{x}{2} + 1)^2$$prompt$, $json$[{"latex":"\\frac{x^2}{4} + x + 1","correct":true},{"latex":"\\frac{x^2}{4} + 1","correct":false},{"latex":"\\frac{x^2}{2} + x + 1","correct":false},{"latex":"\\frac{x^2}{4} + x + 2","correct":false}]$json$::jsonb, $exp$$(\frac{x}{2})^2 = \frac{x^2}{4}$, $2(\frac{x}{2})(1) = x$ y $1^2 = 1$: $\frac{x^2}{4} + x + 1$.$exp$),
@@ -856,7 +826,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 14 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$difcuad-h-03$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$diferencia-cuadrados$law$, $diff$hard$diff$, $prompt$Si $a^2 - b^2 = 45$ y $a + b = 9$, ¿cuánto vale $a - b$?$prompt$, $json$[{"latex":"5","correct":true},{"latex":"9","correct":false},{"latex":"36","correct":false},{"latex":"45","correct":false}]$json$::jsonb, $exp$$a^2 - b^2 = (a+b)(a-b) = 45$. Como $a+b = 9$, entonces $9(a-b) = 45$, por lo que $a-b = 5$.$exp$),
   ($id$difcuad-h-04$id$, $sec$algebra$sec$, $sub$productos-notables$sub$, $law$diferencia-cuadrados$law$, $diff$hard$diff$, $prompt$Factoriza: $9x^4 - 4$$prompt$, $json$[{"latex":"(3x^2 + 2)(3x^2 - 2)","correct":true},{"latex":"(3x^2 + 2)^2","correct":false},{"latex":"(3x^2 - 2)^2","correct":false},{"latex":"(9x^2 + 2)(x^2 - 2)","correct":false}]$json$::jsonb, $exp$$9x^4 - 4 = (3x^2)^2 - 2^2 = (3x^2+2)(3x^2-2)$.$exp$),
@@ -919,7 +889,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 15 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$compop-f-03$id$, $sec$algebra$sec$, $sub$complejos$sub$, $law$complejos-operaciones$law$, $diff$easy$diff$, $prompt$Resta: $(5 + 2i) - (3 + i)$$prompt$, $json$[{"latex":"2 + i","correct":true},{"latex":"2 - i","correct":false},{"latex":"8 + 3i","correct":false},{"latex":"2 + 3i","correct":false}]$json$::jsonb, $exp$$(5-3) + (2-1)i = 2 + i$.$exp$),
   ($id$compop-f-04$id$, $sec$algebra$sec$, $sub$complejos$sub$, $law$complejos-operaciones$law$, $diff$easy$diff$, $prompt$¿Cuál es el conjugado de $3 + 4i$?$prompt$, $json$[{"latex":"3 - 4i","correct":true},{"latex":"-3 + 4i","correct":false},{"latex":"-3 - 4i","correct":false},{"latex":"4 + 3i","correct":false}]$json$::jsonb, $exp$El conjugado cambia el signo de la parte imaginaria: $3 - 4i$.$exp$),
@@ -982,7 +952,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 16 (8 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$divpol-m-03$id$, $sec$algebra$sec$, $sub$division-polinomios$sub$, $law$division-polinomios$law$, $diff$medium$diff$, $prompt$Divide: $(2x^2 + 6x) \div 2x$$prompt$, $json$[{"latex":"x + 3","correct":true},{"latex":"x - 3","correct":false},{"latex":"2x + 3","correct":false},{"latex":"x + 6","correct":false}]$json$::jsonb, $exp$$\frac{2x^2}{2x} + \frac{6x}{2x} = x + 3$.$exp$),
   ($id$divpol-m-04$id$, $sec$algebra$sec$, $sub$division-polinomios$sub$, $law$division-polinomios$law$, $diff$medium$diff$, $prompt$Divide: $(x^2 - 1) \div (x + 1)$$prompt$, $json$[{"latex":"x - 1","correct":true},{"latex":"x + 1","correct":false},{"latex":"x^2 - 1","correct":false},{"latex":"1 - x","correct":false}]$json$::jsonb, $exp$$x^2 - 1 = (x+1)(x-1)$, así que el cociente es $x-1$.$exp$),
@@ -1003,4 +973,4 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Limpieza de filas de prueba
-DELETE FROM public.questions WHERE id = 'test-debug';
+DELETE FROM eqd.questions WHERE id = 'test-debug';

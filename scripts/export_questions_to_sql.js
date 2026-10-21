@@ -94,42 +94,12 @@ function formatQuestionValue(q) {
 function generateSqlScript(questions, title) {
   const lines = [
     `-- =====================================================================`,
-    `-- Migración Supabase: ${title}`,
+    `-- Carga de preguntas: ${title}`,
     `-- Total preguntas en este script: ${questions.length}`,
     `-- Fecha de generación: ${new Date().toISOString()}`,
     `-- =====================================================================`,
     ``,
-    `-- Tabla e índices base`,
-    `CREATE TABLE IF NOT EXISTS public.questions (`,
-    `  id          TEXT PRIMARY KEY,`,
-    `  section_id  TEXT NOT NULL,`,
-    `  subtema_id  TEXT NOT NULL,`,
-    `  law_id      TEXT NOT NULL,`,
-    `  difficulty  TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),`,
-    `  prompt      TEXT NOT NULL,`,
-    `  options     JSONB NOT NULL,`,
-    `  explanation TEXT NOT NULL DEFAULT '',`,
-    `  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),`,
-    `  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()`,
-    `);`,
-    ``,
-    `CREATE INDEX IF NOT EXISTS questions_law_idx ON public.questions (section_id, subtema_id, law_id);`,
-    ``,
-    `ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;`,
-    ``,
-    `-- Políticas RLS:`,
-    `-- 1. Lectura pública (permite alumnos anónimos y autenticados)`,
-    `DROP POLICY IF EXISTS "questions read auth" ON public.questions;`,
-    `DROP POLICY IF EXISTS "questions read all" ON public.questions;`,
-    `CREATE POLICY "questions read all" ON public.questions`,
-    `  FOR SELECT TO anon, authenticated USING (true);`,
-    ``,
-    `-- 2. Escritura restringida a administradores`,
-    `DROP POLICY IF EXISTS "questions admin write" ON public.questions;`,
-    `CREATE POLICY "questions admin write" ON public.questions`,
-    `  FOR ALL TO authenticated`,
-    `  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin))`,
-    `  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin));`,
+    `SET search_path = eqd, public;`,
     ``
   ];
 
@@ -138,7 +108,7 @@ function generateSqlScript(questions, title) {
   for (let i = 0; i < questions.length; i += BATCH_SIZE) {
     const batch = questions.slice(i, i + BATCH_SIZE);
     lines.push(`-- Lote ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} preguntas)`);
-    lines.push(`INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)`);
+    lines.push(`INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)`);
     lines.push(`VALUES`);
     lines.push(batch.map(formatQuestionValue).join(',\n'));
     lines.push(`ON CONFLICT (id) DO UPDATE SET`);
@@ -155,7 +125,7 @@ function generateSqlScript(questions, title) {
 
   // Limpiar cualquier fila de prueba remanente
   lines.push(`-- Limpieza de filas de prueba`);
-  lines.push(`DELETE FROM public.questions WHERE id = 'test-debug';`);
+  lines.push(`DELETE FROM eqd.questions WHERE id = 'test-debug';`);
   lines.push(``);
 
   return lines.join('\n');

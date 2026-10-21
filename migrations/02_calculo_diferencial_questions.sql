@@ -1,43 +1,13 @@
 -- =====================================================================
--- Migración Supabase: Sección 02 - Cálculo Diferencial (183 preguntas)
+-- Carga de preguntas: Sección 02 - Cálculo Diferencial (183 preguntas)
 -- Total preguntas en este script: 183
--- Fecha de generación: 2026-10-08T18:10:16.013Z
+-- Fecha de generación: 2026-10-21T05:05:15.868Z
 -- =====================================================================
 
--- Tabla e índices base
-CREATE TABLE IF NOT EXISTS public.questions (
-  id          TEXT PRIMARY KEY,
-  section_id  TEXT NOT NULL,
-  subtema_id  TEXT NOT NULL,
-  law_id      TEXT NOT NULL,
-  difficulty  TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
-  prompt      TEXT NOT NULL,
-  options     JSONB NOT NULL,
-  explanation TEXT NOT NULL DEFAULT '',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS questions_law_idx ON public.questions (section_id, subtema_id, law_id);
-
-ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
-
--- Políticas RLS:
--- 1. Lectura pública (permite alumnos anónimos y autenticados)
-DROP POLICY IF EXISTS "questions read auth" ON public.questions;
-DROP POLICY IF EXISTS "questions read all" ON public.questions;
-CREATE POLICY "questions read all" ON public.questions
-  FOR SELECT TO anon, authenticated USING (true);
-
--- 2. Escritura restringida a administradores
-DROP POLICY IF EXISTS "questions admin write" ON public.questions;
-CREATE POLICY "questions admin write" ON public.questions
-  FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin));
+SET search_path = eqd, public;
 
 -- Lote 1 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$limsus-f-01$id$, $sec$calculo-diferencial$sec$, $sub$limites$sub$, $law$lim-sustitucion$law$, $diff$easy$diff$, $prompt$¿Cómo evalúas $\lim_{x \to 2} (3x + 1)$?$prompt$, $json$[{"latex":"\\text{Sustitución directa}","correct":true},{"latex":"\\text{Factorización}","correct":false},{"latex":"\\text{Racionalización}","correct":false},{"latex":"\\text{Regla de L'Hôpital}","correct":false}]$json$::jsonb, $exp$$3x + 1$ es un polinomio, continuo en todo $\mathbb{R}$: basta sustituir $x = 2$.$exp$),
   ($id$limsus-f-02$id$, $sec$calculo-diferencial$sec$, $sub$limites$sub$, $law$lim-sustitucion$law$, $diff$easy$diff$, $prompt$Calcula: $\lim_{x \to 2} (3x + 1)$$prompt$, $json$[{"latex":"7","correct":true},{"latex":"6","correct":false},{"latex":"5","correct":false},{"latex":"1","correct":false}]$json$::jsonb, $exp$Sustituye directamente: $3(2) + 1 = 7$.$exp$),
@@ -100,7 +70,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 2 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$derb-h-02$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Una recta horizontal $y = c$ tiene pendiente...$prompt$, $json$[{"latex":"0, \\text{ por eso } \\frac{d}{dx}(c) = 0","correct":true},{"latex":"1, \\text{ por eso } \\frac{d}{dx}(c) = 1","correct":false},{"latex":"c","correct":false},{"latex":"\\text{Infinita}","correct":false}]$json$::jsonb, $exp$La derivada es la pendiente de la recta tangente: una recta horizontal tiene pendiente 0.$exp$),
   ($id$derb-f-03$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$easy$diff$, $prompt$Deriva: $f(x) = x$$prompt$, $json$[{"latex":"1","correct":true},{"latex":"0","correct":false},{"latex":"x","correct":false},{"latex":"x^2","correct":false}]$json$::jsonb, $exp$Fórmula II: $\frac{d}{dx}(x) = 1$.$exp$),
@@ -163,7 +133,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 3 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$derb-h-18$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Deriva: $f(x) = \frac{\ln x}{x}$$prompt$, $json$[{"latex":"\\frac{1 - \\ln x}{x^2}","correct":true},{"latex":"\\frac{1 + \\ln x}{x^2}","correct":false},{"latex":"\\frac{1}{x^2}","correct":false},{"latex":"\\frac{\\ln x - 1}{x^2}","correct":false}]$json$::jsonb, $exp$Fórmula VII: $\frac{x \cdot \frac{1}{x} - \ln x}{x^2} = \frac{1 - \ln x}{x^2}$.$exp$),
   ($id$derb-h-19$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Si $f(x) = \frac{x}{x + 1}$, ¿cuánto vale $f'(1)$?$prompt$, $json$[{"latex":"\\frac{1}{4}","correct":true},{"latex":"\\frac{1}{2}","correct":false},{"latex":"1","correct":false},{"latex":"\\frac{3}{4}","correct":false}]$json$::jsonb, $exp$$f'(x) = \frac{(x+1) - x}{(x+1)^2} = \frac{1}{(x+1)^2}$; en $x = 1$: $\frac{1}{4}$.$exp$),
@@ -226,7 +196,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 4 (33 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$derl-h-08$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$¿Por qué $f(x) = x^{\sin x}$ no se deriva con la regla de la potencia?$prompt$, $json$[{"latex":"\\text{Porque el exponente } \\sin x \\text{ no es constante}","correct":true},{"latex":"\\text{Porque la base es } x","correct":false},{"latex":"\\text{Porque } \\sin x \\text{ no tiene derivada}","correct":false},{"latex":"\\text{Sí se puede: } (\\sin x) x^{\\sin x - 1}","correct":false}]$json$::jsonb, $exp$La potencia (VI) exige exponente constante. Aquí ambos varían: se necesita la fórmula XII.$exp$),
   ($id$derl-h-09$id$, $sec$calculo-diferencial$sec$, $sub$derivacion$sub$, $law$derivacion$law$, $diff$hard$diff$, $prompt$Deriva: $f(x) = x^e$$prompt$, $json$[{"latex":"e x^{e-1}","correct":true},{"latex":"x^e \\ln x","correct":false},{"latex":"e x^e","correct":false},{"latex":"x^e(\\ln x + e)","correct":false}]$json$::jsonb, $exp$El exponente $e$ es constante: es potencia (VIa), no derivación logarítmica. Queda $e x^{e-1}$.$exp$),
@@ -272,4 +242,4 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Limpieza de filas de prueba
-DELETE FROM public.questions WHERE id = 'test-debug';
+DELETE FROM eqd.questions WHERE id = 'test-debug';

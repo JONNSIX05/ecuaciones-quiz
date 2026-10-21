@@ -14,3 +14,11 @@ PLAN.md
 .agents/
 skills-lock.json
 plan_migracion.md
+
+# Backend API & Secretos
+server/node_modules/
+server/.env
+*.env.local
+*.csv
+*.dump
+*.sql.gz

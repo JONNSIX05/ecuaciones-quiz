@@ -3,7 +3,7 @@
 // editar + eliminar + subir JSON + ver detalle expandible.
 
 import { isAdmin } from './auth.js';
-import { getSupabase } from './supabase.js';
+import { api } from './api.js';
 import { listQuestions, updateQuestion, deleteQuestion, insertQuestions, listQuestionsRange } from './questions.js';
 import { validateQuestionJSON } from '../data/questions/upload-schema.js';
 import { sections } from './sections.js';
@@ -298,10 +298,9 @@ async function toggleExpand(id) {
   if (content.dataset.loaded === 'true') return;
   // Lazy load: cargamos la pregunta completa desde BD
   try {
-    const sb = (await import('./supabase.js')).getSupabase();
-    const { data } = await sb.from('questions').select('*').eq('id', id).maybeSingle();
-    if (data) {
-      content.innerHTML = renderDetail(data);
+    const res = await api.get(`/admin/questions/${encodeURIComponent(id)}`);
+    if (res?.question) {
+      content.innerHTML = renderDetail(res.question);
       content.dataset.loaded = 'true';
     }
   } catch (e) {
@@ -423,8 +422,6 @@ function showUpload() {
   commitBtn.addEventListener('click', async () => {
     if (!validated) return;
     const meta = validated.meta;
-    const sb = (await import('./supabase.js')).getSupabase();
-    if (!sb) { alert('Supabase no disponible'); return; }
     const rows = validated.questions.map((q) => ({
       id: q.id,
       section_id: meta.sectionId || q.section || '',

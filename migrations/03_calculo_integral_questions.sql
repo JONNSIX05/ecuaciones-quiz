@@ -1,43 +1,13 @@
 -- =====================================================================
--- Migración Supabase: Sección 03 - Cálculo Integral (155 preguntas)
+-- Carga de preguntas: Sección 03 - Cálculo Integral (155 preguntas)
 -- Total preguntas en este script: 155
--- Fecha de generación: 2026-10-08T18:10:16.018Z
+-- Fecha de generación: 2026-10-21T05:05:15.870Z
 -- =====================================================================
 
--- Tabla e índices base
-CREATE TABLE IF NOT EXISTS public.questions (
-  id          TEXT PRIMARY KEY,
-  section_id  TEXT NOT NULL,
-  subtema_id  TEXT NOT NULL,
-  law_id      TEXT NOT NULL,
-  difficulty  TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
-  prompt      TEXT NOT NULL,
-  options     JSONB NOT NULL,
-  explanation TEXT NOT NULL DEFAULT '',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS questions_law_idx ON public.questions (section_id, subtema_id, law_id);
-
-ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
-
--- Políticas RLS:
--- 1. Lectura pública (permite alumnos anónimos y autenticados)
-DROP POLICY IF EXISTS "questions read auth" ON public.questions;
-DROP POLICY IF EXISTS "questions read all" ON public.questions;
-CREATE POLICY "questions read all" ON public.questions
-  FOR SELECT TO anon, authenticated USING (true);
-
--- 2. Escritura restringida a administradores
-DROP POLICY IF EXISTS "questions admin write" ON public.questions;
-CREATE POLICY "questions admin write" ON public.questions
-  FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.is_admin));
+SET search_path = eqd, public;
 
 -- Lote 1 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$int-f-01$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$easy$diff$, $prompt$Calcula: $\int x^2\,dx$$prompt$, $json$[{"latex":"\\frac{x^3}{3} + C","correct":true},{"latex":"\\frac{x^3}{2} + C","correct":false},{"latex":"2x + C","correct":false},{"latex":"\\frac{x^2}{2} + C","correct":false}]$json$::jsonb, $exp$Fórmula (4): $\int v^n\,dv = \frac{v^{n+1}}{n+1} + C$. Aquí $n = 2$.$exp$),
   ($id$int-f-02$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$easy$diff$, $prompt$Calcula: $\int x^3\,dx$$prompt$, $json$[{"latex":"\\frac{x^4}{4} + C","correct":true},{"latex":"3x^2 + C","correct":false},{"latex":"\\frac{x^3}{3} + C","correct":false},{"latex":"x^4 + C","correct":false}]$json$::jsonb, $exp$Fórmula (4) con $n = 3$: $\frac{x^{3+1}}{3+1} = \frac{x^4}{4} + C$.$exp$),
@@ -100,7 +70,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 2 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$int-m-21$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$medium$diff$, $prompt$Calcula: $\int \sin(2x)\,dx$$prompt$, $json$[{"latex":"-\\frac{1}{2}\\cos(2x) + C","correct":true},{"latex":"-\\cos(2x) + C","correct":false},{"latex":"\\frac{1}{2}\\cos(2x) + C","correct":false},{"latex":"-2\\cos(2x) + C","correct":false}]$json$::jsonb, $exp$Con $u = 2x$, $du = 2\,dx$: $-\frac{1}{2}\cos(2x) + C$.$exp$),
   ($id$int-m-22$id$, $sec$calculo-integral$sec$, $sub$inmediatas$sub$, $law$inmediatas$law$, $diff$medium$diff$, $prompt$Calcula: $\int (4x^3 - 6x^2 + 2)\,dx$$prompt$, $json$[{"latex":"x^4 - 2x^3 + 2x + C","correct":true},{"latex":"x^4 - 2x^3 + C","correct":false},{"latex":"12x^2 - 12x + C","correct":false},{"latex":"x^4 - 6x^3 + 2x + C","correct":false}]$json$::jsonb, $exp$Fórmula (1) término a término: $x^4 - 2x^3 + 2x + C$.$exp$),
@@ -163,7 +133,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 3 (50 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$par-m-08$id$, $sec$calculo-integral$sec$, $sub$partes$sub$, $law$partes$law$, $diff$medium$diff$, $prompt$En $\int x\,\cos x\,dx$ con $u = x$, ¿cuál es $dv$?$prompt$, $json$[{"latex":"dv = \\cos x\\,dx","correct":true},{"latex":"dv = \\sin x\\,dx","correct":false},{"latex":"dv = x\\,dx","correct":false},{"latex":"dv = \\cos x","correct":false}]$json$::jsonb, $exp$Con $u = x$, el resto es $dv = \cos x\,dx$, luego $v = \sin x$.$exp$),
   ($id$par-m-09$id$, $sec$calculo-integral$sec$, $sub$partes$sub$, $law$partes$law$, $diff$medium$diff$, $prompt$Calcula: $\int x\,\sec^2 x\,dx$$prompt$, $json$[{"latex":"x\\tan x + \\ln|\\cos x| + C","correct":true},{"latex":"x\\tan x - \\ln|\\cos x| + C","correct":false},{"latex":"x\\tan x + C","correct":false},{"latex":"\\frac{x^2}{2}\\tan x + C","correct":false}]$json$::jsonb, $exp$$u = x$, $dv = \sec^2 x\,dx$: $x\tan x - \int\tan x\,dx = x\tan x + \ln|\cos x| + C$.$exp$),
@@ -226,7 +196,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Lote 4 (5 preguntas)
-INSERT INTO public.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
+INSERT INTO eqd.questions (id, section_id, subtema_id, law_id, difficulty, prompt, options, explanation)
 VALUES
   ($id$sust-m-06$id$, $sec$calculo-integral$sec$, $sub$sustitucion-trigonometrica$sub$, $law$sustitucion-trigonometrica$law$, $diff$medium$diff$, $prompt$¿Qué sustitución transforma $\frac{dx}{x^2 + 4}$ en una integral trigonométrica?$prompt$, $json$[{"latex":"x = 2\\tan\\theta","correct":true},{"latex":"x = 2\\sin\\theta","correct":false},{"latex":"x = 2\\sec\\theta","correct":false},{"latex":"x = 4\\tan\\theta","correct":false}]$json$::jsonb, $exp$El denominador es $x^2 + 4 = x^2 + a^2$, con $a = 2$: $x = 2\tan\theta$.$exp$),
   ($id$sust-h-01$id$, $sec$calculo-integral$sec$, $sub$sustitucion-trigonometrica$sub$, $law$sustitucion-trigonometrica$law$, $diff$hard$diff$, $prompt$Calcula $\int \frac{dx}{x^2 + 4}$ usando $x = 2\tan\theta$.$prompt$, $json$[{"latex":"\\frac{1}{2}\\arctan\\frac{x}{2} + C","correct":true},{"latex":"\\arctan\\frac{x}{2} + C","correct":false},{"latex":"\\frac{1}{4}\\arctan x + C","correct":false},{"latex":"\\ln(x^2 + 4) + C","correct":false}]$json$::jsonb, $exp$$dx = 2\sec^2\theta\,d\theta$; la integral da $\frac{1}{2}\theta + C = \frac{1}{2}\arctan\frac{x}{2} + C$.$exp$),
@@ -244,4 +214,4 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at  = now();
 
 -- Limpieza de filas de prueba
-DELETE FROM public.questions WHERE id = 'test-debug';
+DELETE FROM eqd.questions WHERE id = 'test-debug';

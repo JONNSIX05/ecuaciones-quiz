@@ -6,6 +6,8 @@
   <title>Quiz de Matemáticas — UNACH</title>
   <meta name="description" content="Quiz interactivo de opción múltiple para repasar conceptos base de Ecuaciones Diferenciales: Álgebra, Cálculo Diferencial y Cálculo Integral.">
   <meta name="theme-color" content="#132652">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 https://eqd-quiz.duckdns.org; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
 
   <!-- KaTeX self-hosted -->
   <link rel="stylesheet" href="./vendor/katex/katex.min.css">
@@ -32,8 +34,6 @@
 
   <!-- KaTeX self-hosted (global `katex`) -->
   <script defer src="./vendor/katex/katex.min.js"></script>
-  <!-- Supabase JS (CDN, anon key pública; seguridad vía RLS) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="./js/app.js?v=5"></script>
+  <script type="module" src="./js/app.js?v=6"></script>
 </body>
 </html>

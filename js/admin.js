@@ -2,7 +2,7 @@
 // Dashboard del profesor: KPIs, ranking, alumnos en riesgo, desglose por
 // sección/ley y resumen de práctica libre. Solo accesible para is_admin = true.
 
-import { getSupabase } from './supabase.js';
+import { api } from './api.js';
 import { isAdmin, getUser, signOut } from './auth.js';
 
 function escapeHtml(str) {
@@ -52,10 +52,10 @@ export async function renderAdminDashboard(view) {
       <div class="admin-card">
         <h2>Acceso restringido</h2>
         <p>Necesitas permisos de administrador para acceder a este panel docente.</p>
-        <p class="admin-hint">Si eres el profesor, ejecuta en Supabase SQL Editor:</p>
-        <pre class="admin-code">update public.profiles
-set is_admin = true
-where email = 'TU_EMAIL';</pre>
+        <p class="admin-hint">Si eres el profesor, ejecuta en PostgreSQL en tu VPS:</p>
+        <pre class="admin-code">UPDATE eqd.users
+SET is_admin = true
+WHERE email = 'TU_EMAIL';</pre>
         <div class="admin-actions">
           <button id="admin-logout" class="btn btn-soft">Cerrar sesión</button>
         </div>
@@ -65,12 +65,6 @@ where email = 'TU_EMAIL';</pre>
       window.location.hash = '#/';
       window.location.reload();
     });
-    return;
-  }
-
-  const sb = getSupabase();
-  if (!sb) {
-    view.innerHTML = `<div class="card"><h2>Supabase no disponible</h2><p>No se pudo cargar el cliente. Revisa tu conexión.</p></div>`;
     return;
   }
 
@@ -105,21 +99,12 @@ where email = 'TU_EMAIL';</pre>
   });
 
   try {
-    const [profilesRes, quizRes, practiceRes] = await Promise.all([
-      sb.from('profiles').select('user_id, email, full_name, is_admin, created_at'),
-      sb.from('quiz_attempts').select('*').order('created_at', { ascending: false }),
-      sb.from('practice_attempts').select('*').order('created_at', { ascending: false }),
-    ]);
-
-    const profiles = profilesRes.data ?? [];
-    const quizAttempts = quizRes.data ?? [];
-    const practiceAttempts = practiceRes.data ?? [];
-
-    renderDashboardContent(view, profiles, quizAttempts, practiceAttempts);
+    const data = await api.get('/admin/dashboard');
+    renderDashboardContent(view, data.profiles || [], data.quizAttempts || [], data.practiceAttempts || []);
   } catch (err) {
     view.querySelector('#admin-body').innerHTML =
       `<div class="alert-warn"><strong>Error al cargar:</strong> ${escapeHtml(err.message)}<br>
-      <small>Posible error de conexión o esquema en Supabase.</small></div>`;
+      <small>Posible error de conexión con la API en el VPS.</small></div>`;
   }
 }
 

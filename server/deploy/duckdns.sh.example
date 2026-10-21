@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# =====================================================================
+# duckdns.sh
+# Script para actualizar la IP del subdominio en DuckDNS vía cron.
+# Ubicación en VPS recomendada: /opt/duckdns/duck.sh
+# Permisos recomendados: chmod 700 /opt/duckdns/duck.sh
+# =====================================================================
+
+DOMAIN="eqd-quiz"
+TOKEN="PEGAR_TOKEN_AQUI"
+
+LOG_FILE="/var/log/duckdns.log"
+RESPONSE=$(curl -s "https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip=")
+
+echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] DuckDNS update response: ${RESPONSE}" >> "$LOG_FILE"

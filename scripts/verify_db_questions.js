@@ -1,105 +1,79 @@
 // scripts/verify_db_questions.js
-// Verifica la cantidad, distribución e integridad de caracteres (mojibake) en Supabase vía REST API usando curl.
+// Verifica la cantidad, distribución e integridad de preguntas en la base de datos vía la API del VPS o local.
 
-import { execSync } from 'child_process';
+const API_URL = process.env.API_URL || 'https://eqd-quiz.duckdns.org';
+const AUTH_TOKEN = process.env.AUTH_TOKEN || '';
 
-const SUPABASE_URL = 'https://vaxpiyhwrfzjukevzslo.supabase.co';
-const ANON_KEY = 'sb_publishable_JHC5u4DBYAM16R2srAtSzA_3KhZyqL5';
-
-function checkCount(filter = '') {
-  const url = `${SUPABASE_URL}/rest/v1/questions?select=id${filter}`;
+async function fetchQuestionsCount(filter = '') {
   try {
-    const output = execSync(
-      `curl.exe -s -i "${url}" -H "apikey: ${ANON_KEY}" -H "Authorization: Bearer ${ANON_KEY}" -H "Range: 0-0" -H "Prefer: count=exact"`,
-      { encoding: 'utf-8', timeout: 15000 }
-    );
+    const headers = { 'Accept': 'application/json' };
+    if (AUTH_TOKEN) headers['Authorization'] = `Bearer ${AUTH_TOKEN}`;
 
-    const rangeMatch = output.match(/content-range:\s*([^\r\n]+)/i);
-    if (!rangeMatch) {
-      if (output.includes('HTTP/1.1 200') || output.includes('HTTP/2 200')) {
-        return { ok: true, total: 0 };
-      }
-      return { ok: false, error: 'No se encontró encabezado content-range' };
+    const res = await fetch(`${API_URL}/admin/questions?from=0&to=1${filter}`, { headers });
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status}: ${res.statusText}` };
     }
-
-    const rangeVal = rangeMatch[1].trim(); // ej: "*/0" o "0-0/758"
-    const total = rangeVal.includes('/') ? parseInt(rangeVal.split('/')[1], 10) : 0;
-    return { ok: true, total };
+    const data = await res.json();
+    return { ok: true, total: data.count ?? 0 };
   } catch (err) {
     return { ok: false, error: err.message };
   }
 }
 
-function checkMojibake() {
+async function checkSample() {
   try {
-    const url = `${SUPABASE_URL}/rest/v1/questions?select=id,prompt,explanation&limit=100`;
-    const output = execSync(
-      `curl.exe -s "${url}" -H "apikey: ${ANON_KEY}" -H "Authorization: Bearer ${ANON_KEY}"`,
-      { encoding: 'utf-8', timeout: 15000 }
-    );
-    const rows = JSON.parse(output);
+    const headers = { 'Accept': 'application/json' };
+    if (AUTH_TOKEN) headers['Authorization'] = `Bearer ${AUTH_TOKEN}`;
+
+    const res = await fetch(`${API_URL}/admin/questions?from=0&to=99`, { headers });
+    if (!res.ok) return { error: `HTTP ${res.status}` };
+
+    const data = await res.json();
+    const rows = data.rows || [];
     const corrupted = rows.filter(r => /Ã|Â|â€/.test(r.prompt || '') || /Ã|Â|â€/.test(r.explanation || ''));
-    const testDebug = rows.find(r => r.id === 'test-debug');
+
     return {
       sampleChecked: rows.length,
       corruptedCount: corrupted.length,
-      hasTestDebug: Boolean(testDebug),
-      corruptedSample: corrupted.slice(0, 3)
+      sample: corrupted.slice(0, 3)
     };
-  } catch (e) {
-    return { error: e.message };
+  } catch (err) {
+    return { error: err.message };
   }
 }
 
-function main() {
-  console.log('=== Verificando preguntas en Supabase (vaxpiyhwrfzjukevzslo) ===');
-  
-  const totalRes = checkCount();
+async function main() {
+  console.log(`=== Verificando preguntas en API: ${API_URL} ===\n`);
+
+  if (!AUTH_TOKEN) {
+    console.warn('AVISO: Variable AUTH_TOKEN no configurada. Si el endpoint requiere autenticación admin, pasarlo como:');
+    console.warn('  AUTH_TOKEN="..." node scripts/verify_db_questions.js\n');
+  }
+
+  const totalRes = await fetchQuestionsCount();
   if (!totalRes.ok) {
-    console.error('Error al consultar Supabase:', totalRes.error);
+    console.error('Error al consultar la API:', totalRes.error);
     return;
   }
 
-  console.log(`\nTotal global en BD: ${totalRes.total} / 758 esperadas`);
+  console.log(`Total de preguntas registradas: ${totalRes.total}`);
 
-  const sections = ['algebra', 'calculo-diferencial', 'calculo-integral'];
-  const expected = {
-    'algebra': 420,
-    'calculo-diferencial': 183,
-    'calculo-integral': 155
-  };
+  const [alg, cd, ci] = await Promise.all([
+    fetchQuestionsCount('&section_id=algebra'),
+    fetchQuestionsCount('&section_id=calculo-diferencial'),
+    fetchQuestionsCount('&section_id=calculo-integral'),
+  ]);
 
-  for (const sec of sections) {
-    const res = checkCount(`&section_id=eq.${sec}`);
-    if (res.ok) {
-      console.log(`  - ${sec}: ${res.total} / ${expected[sec]} esperadas`);
-    } else {
-      console.log(`  - ${sec}: Error (${res.error})`);
-    }
-  }
+  console.log(`  - Álgebra:             ${alg.ok ? alg.total : 'Error'}`);
+  console.log(`  - Cálculo Diferencial: ${cd.ok ? cd.total : 'Error'}`);
+  console.log(`  - Cálculo Integral:    ${ci.ok ? ci.total : 'Error'}`);
 
-  const mojibakeRes = checkMojibake();
-  console.log('\n--- Auditoría de Caracteres y Filas de Prueba ---');
-  if (mojibakeRes.error) {
-    console.log('  No se pudo verificar muestra de texto:', mojibakeRes.error);
+  const sampleRes = await checkSample();
+  if (sampleRes.error) {
+    console.warn('Muestra no evaluada:', sampleRes.error);
   } else {
-    if (mojibakeRes.hasTestDebug) {
-      console.log('  ⚠ Fila de prueba "test-debug" presente en BD.');
-    } else {
-      console.log('  ✓ Sin filas de prueba extra ("test-debug" eliminada).');
-    }
-
-    if (mojibakeRes.corruptedCount > 0) {
-      console.log(`  ⚠ Advertencia: Se detectaron caracteres corruptos (mojibake) en la muestra (${mojibakeRes.corruptedCount}/${mojibakeRes.sampleChecked}):`);
-      mojibakeRes.corruptedSample.forEach(c => console.log(`    - ID: ${c.id}: ${c.prompt}`));
-      console.log('  -> Es necesario re-aplicar migrations/00_all_questions.sql con codificación UTF-8.');
-    } else {
-      console.log('  ✓ Acentos y caracteres especiales limpios (sin mojibake).');
-    }
-  }
-
-  if (totalRes.total === 758 && mojibakeRes.corruptedCount === 0 && !mojibakeRes.hasTestDebug) {
-    console.log('\n✓ ¡MIGRACIÓN COMPLETADA Y VERIFICADA CON ÉXITO! (100% de preguntas cargadas y limpias)');
+    console.log(`\nRevisión de codificación (muestra de ${sampleRes.sampleChecked}):`);
+    console.log(`  - Registros con caracteres corruptos: ${sampleRes.corruptedCount}`);
   }
 }
 

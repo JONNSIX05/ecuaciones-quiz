@@ -1,8 +1,8 @@
 // js/practice-results.js
-// Adaptador para practice_attempts (Práctica libre). Persiste en Supabase cuando
-// hay sesión y siempre deja copia en localStorage como cache.
+// Adaptador para practice_attempts (Práctica libre). Persiste en la API del VPS
+// cuando hay sesión y siempre deja copia en localStorage como cache.
 
-import { getSupabase } from './supabase.js';
+import { api } from './api.js';
 import { getUser } from './auth.js';
 
 const STORAGE_KEY = 'eqd:practice';
@@ -18,33 +18,28 @@ function saveLocal(record) {
 }
 
 /**
- * Guarda un intento de práctica libre: Supabase (si hay sesión) + localStorage.
+ * Guarda un intento de práctica libre: API (si hay sesión) + localStorage.
  * @param {{input:string,topic:string,correct:boolean,date?:number}} record
  * @returns {Promise<{source:'cloud'|'local'}>}
  */
 export async function savePracticeAttempt(record) {
   const fullRecord = { ...record, date: record.date || Date.now() };
 
-  const sb = getSupabase();
-  if (sb) {
-    try {
-      const user = await getUser();
-      if (user) {
-        const { error } = await sb.from('practice_attempts').insert({
-          user_id: user.id,
-          input: fullRecord.input,
-          topic: fullRecord.topic,
-          correct: fullRecord.correct,
-        });
-        if (!error) {
-          saveLocal(fullRecord);
-          return { source: 'cloud' };
-        }
-      }
-    } catch (_) {
-      // ignorar
+  try {
+    const user = await getUser();
+    if (user) {
+      await api.post('/attempts/practice', {
+        input: fullRecord.input,
+        topic: fullRecord.topic || '',
+        correct: Boolean(fullRecord.correct),
+      });
+      saveLocal(fullRecord);
+      return { source: 'cloud' };
     }
+  } catch (_) {
+    // ignorar y caer a local
   }
+
   saveLocal(fullRecord);
   return { source: 'local' };
 }

@@ -1,0 +1,14 @@
+# _config.yml
+# Exclusiones de construcción para GitHub Pages (Jekyll)
+# Evita compilar o publicar el código del backend, scripts y migraciones en la web estática.
+
+exclude:
+  - server
+  - scripts
+  - migrations
+  - package.json
+  - package-lock.json
+  - node_modules
+  - README.md
+  - AGENTS.md
+  - PLAN.md
