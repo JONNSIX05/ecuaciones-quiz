@@ -56,3 +56,61 @@ test('Sanitización de operadores LIKE para prevenir inyecciones SQL lógicas', 
   const sanitized2 = escapeLike(attack2);
   assert.equal(sanitized2, "normal text");
 });
+
+test('Validación de esquema de subida de preguntas JSON', async () => {
+  const { validateQuestionJSON } = await import('../../data/questions/upload-schema.js');
+
+  const samplePayload = {
+    section: 'algebra',
+    subtema: 'exponentes',
+    law: 'producto',
+    questions: [
+      {
+        id: 'prod-f-91',
+        difficulty: 'easy',
+        prompt: 'Simplifica: x^3 \\cdot x^5',
+        options: [
+          { latex: 'x^8', correct: true },
+          { latex: 'x^{15}', correct: false },
+          { latex: '2x^8', correct: false },
+          { latex: 'x^2', correct: false },
+        ],
+        explanation: 'Producto de potencias de igual base: x^{3+5} = x^8.',
+      },
+    ],
+  };
+
+  const validCheck = validateQuestionJSON(JSON.stringify(samplePayload));
+  assert.equal(validCheck.ok, true, 'La plantilla oficial debe pasar la validación');
+  assert.equal(validCheck.questions.length, 1);
+  assert.equal(validCheck.questions[0].section_id, 'algebra');
+
+  const missingIdsCheck = validateQuestionJSON(
+    JSON.stringify([
+      {
+        id: 'prod-f-99',
+        difficulty: 'easy',
+        prompt: 'x^2',
+        options: [
+          { latex: '1', correct: true },
+          { latex: '2', correct: false },
+          { latex: '3', correct: false },
+          { latex: '4', correct: false },
+        ],
+        explanation: 'Explicación de prueba',
+      },
+    ])
+  );
+  assert.equal(missingIdsCheck.ok, false, 'Debe rechazar preguntas sin section_id/subtema_id/law_id');
+
+  const duplicateIdCheck = validateQuestionJSON(
+    JSON.stringify({
+      section: 'algebra',
+      subtema: 'exponentes',
+      law: 'producto',
+      questions: [samplePayload.questions[0], samplePayload.questions[0]],
+    })
+  );
+  assert.equal(duplicateIdCheck.ok, false, 'Debe rechazar IDs duplicados en el mismo lote');
+});
+

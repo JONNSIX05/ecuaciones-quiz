@@ -1,10 +1,7 @@
 // js/config.js
-// Configuración de endpoint del backend en VPS con HTTPS gratuito (DuckDNS + Caddy).
+// Configuración de endpoint del backend en VPS con HTTPS (Nginx + Certbot).
+// Permite sobreescribir la URL en desarrollo mediante localStorage.setItem('eqd:api_url', 'http://localhost:3000').
 
-const isLocal =
-  typeof window !== 'undefined' &&
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-export const API_BASE_URL = isLocal
-  ? 'http://localhost:3000'
-  : 'https://eqd-quiz.duckdns.org';
+export const API_BASE_URL =
+  (typeof window !== 'undefined' && window.localStorage?.getItem('eqd:api_url')) ||
+  'https://eqd-quiz.duckdns.org';

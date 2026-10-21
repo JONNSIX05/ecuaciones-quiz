@@ -16,16 +16,85 @@ adminRouter.use(authenticateToken, requireAdmin);
  */
 adminRouter.get('/dashboard', async (req, res, next) => {
   try {
-    const [usersRes, quizRes, practiceRes] = await Promise.all([
-      query(`SELECT id AS user_id, email, full_name, is_admin, created_at FROM eqd.users ORDER BY created_at DESC`),
+    const [usersRes, quizRes, practiceRes, qStatsRes] = await Promise.all([
+      query(`SELECT id AS user_id, email, full_name, is_admin, created_at, last_login_at FROM eqd.users ORDER BY created_at DESC`),
       query(`SELECT id, user_id, section_id, subtema_id, law_id, law_name, difficulty, score, total, created_at FROM eqd.quiz_attempts ORDER BY created_at DESC LIMIT 5000`),
       query(`SELECT id, user_id, input, topic, correct, created_at FROM eqd.practice_attempts ORDER BY created_at DESC LIMIT 5000`),
+      query(`SELECT section_id, difficulty, count(*)::int AS total FROM eqd.questions GROUP BY section_id, difficulty`),
     ]);
 
     return res.json({
       profiles: usersRes.rows,
       quizAttempts: quizRes.rows,
       practiceAttempts: practiceRes.rows,
+      questionStats: qStatsRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const roleSchema = z.object({
+  isAdmin: z.boolean(),
+});
+
+/**
+ * PATCH /admin/users/:id/role
+ * Permite a un administrador asignar o revocar el rol de Profesor (is_admin) a otro usuario.
+ */
+adminRouter.patch('/users/:id/role', async (req, res, next) => {
+  const targetId = String(req.params.id || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_USER_ID', message: 'Identificador de usuario inválido.' }
+    });
+  }
+
+  const parsed = roleSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'El campo booleano isAdmin es requerido.' }
+    });
+  }
+
+  const { isAdmin } = parsed.data;
+
+  // Evitar que el administrador en sesión se quite el rol a sí mismo por accidente
+  if (targetId.toLowerCase() === String(req.user.id).toLowerCase() && !isAdmin) {
+    return res.status(400).json({
+      error: { code: 'SELF_DEMOTE_FORBIDDEN', message: 'No puedes revocar tu propio rol de profesor en la sesión activa.' }
+    });
+  }
+
+  try {
+    const { rows } = await query(
+      `UPDATE eqd.users
+       SET is_admin = $1
+       WHERE id = $2
+       RETURNING id AS user_id, email, full_name, is_admin, created_at`,
+      [isAdmin, targetId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: { code: 'USER_NOT_FOUND', message: 'Usuario no encontrado.' }
+      });
+    }
+
+    await logAudit({
+      userId: req.user.id,
+      action: 'admin_change_user_role',
+      detail: {
+        targetUserId: targetId,
+        targetEmail: rows[0].email,
+        isAdmin,
+      },
+      ip: req.ip,
+    });
+
+    return res.json({
+      ok: true,
+      user: rows[0],
     });
   } catch (err) {
     next(err);

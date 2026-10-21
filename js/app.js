@@ -18,8 +18,8 @@ import { isApiConfigured } from './api.js';
 import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js';
 import { TERMS_DEFAULT, termsToHtml } from './terms.js';
 import { saveAttempt } from './results.js';
-import { renderAdminDashboard } from './admin.js?v=4';
-import { renderAdminQuestions } from './admin-questions.js?v=4';
+import { renderAdminDashboard } from './admin.js?v=7';
+import { renderAdminQuestions } from './admin-questions.js?v=7';
 import { getLaw as getLawRemote } from './questions.js';
 
 const view = document.getElementById('view');
@@ -1069,14 +1069,14 @@ function renderRegister() {
           <div class="auth-field">
             <label for="reg-password">Contraseña</label>
             <div class="auth-input-wrapper">
-              <input type="password" id="reg-password" name="password" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+              <input type="password" id="reg-password" name="password" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
               <button type="button" class="auth-pwd-toggle" id="reg-pwd-toggle" aria-label="Mostrar contraseña">Ver</button>
             </div>
           </div>
 
           <div class="auth-field">
             <label for="reg-password-confirm">Confirmar contraseña</label>
-            <input type="password" id="reg-password-confirm" name="password-confirm" required minlength="6" autocomplete="new-password" placeholder="Repite tu contraseña">
+            <input type="password" id="reg-password-confirm" name="password-confirm" required minlength="8" autocomplete="new-password" placeholder="Repite tu contraseña">
           </div>
 
           <div class="auth-terms-box">
@@ -1140,8 +1140,8 @@ function renderRegister() {
       msgEl.className = 'auth-msg auth-err';
       return;
     }
-    if (password.length < 6) {
-      msgEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+    if (password.length < 8) {
+      msgEl.textContent = 'La contraseña debe tener al menos 8 caracteres.';
       msgEl.className = 'auth-msg auth-err';
       pwdInput.focus();
       return;
