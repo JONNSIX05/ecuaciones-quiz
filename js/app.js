@@ -1132,7 +1132,7 @@ function renderRegister() {
 
   openTermsBtn.addEventListener('click', () => {
     openModal({
-      title: 'Términos y Condiciones — UNACH',
+      title: 'Términos y Condiciones',
       contentHTML: `<div class="terms-modal__content">${termsToHtml(TERMS_DEFAULT)}</div>`,
     });
   });
