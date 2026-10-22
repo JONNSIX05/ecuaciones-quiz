@@ -14,13 +14,13 @@ import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
-import { isApiConfigured } from './api.js?v=8';
-import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js?v=8';
-import { TERMS_DEFAULT, termsToHtml } from './terms.js';
-import { saveAttempt } from './results.js?v=8';
-import { renderAdminDashboard } from './admin.js?v=8';
-import { renderAdminQuestions } from './admin-questions.js?v=8';
-import { getLaw as getLawRemote } from './questions.js?v=8';
+import { isApiConfigured } from './api.js?v=10';
+import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js?v=10';
+import { TERMS_DEFAULT, termsToHtml } from './terms.js?v=10';
+import { saveAttempt } from './results.js?v=10';
+import { renderAdminDashboard } from './admin.js?v=10';
+import { renderAdminQuestions } from './admin-questions.js?v=10';
+import { getLaw as getLawRemote } from './questions.js?v=10';
 
 const view = document.getElementById('view');
 
@@ -941,7 +941,7 @@ function renderLogin() {
   view.innerHTML = `
     <div class="login-portal">
       <div class="login-portal-intro">
-        <span class="auth-badge">Universidad Autónoma de Chiapas</span>
+        <span class="auth-badge">Ecuaciones Diferenciales</span>
         <h1 class="login-portal-title">Quiz de Matemáticas y Ecuaciones Diferenciales</h1>
         <p class="login-portal-desc">Plataforma de evaluación continua y estudio interactivo. Repasa conceptos clave, fórmulas y reactivos de opción múltiple con retroalimentación inmediata.</p>
         <ul class="login-portal-features">
@@ -957,13 +957,13 @@ function renderLogin() {
           <header class="auth-header">
             <span class="auth-badge">Acceso a la plataforma</span>
             <h2 class="auth-title">Iniciar sesión</h2>
-            <p class="auth-sub">Ingresa con tus credenciales institucionales o personales para acceder a los cuestionarios.</p>
+            <p class="auth-sub">Ingresa con tu correo y contraseña para acceder a los cuestionarios.</p>
           </header>
 
           <form id="login-form" class="auth-form" novalidate autocomplete="on">
             <div class="auth-field">
               <label for="login-email">Correo electrónico</label>
-              <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="ejemplo@unach.mx">
+              <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="correo@ejemplo.com">
             </div>
 
             <div class="auth-field">
@@ -1076,7 +1076,7 @@ function renderRegister() {
 
           <div class="auth-field">
             <label for="reg-email">Correo electrónico</label>
-            <input type="email" id="reg-email" name="email" required autocomplete="email" placeholder="ejemplo@unach.mx">
+            <input type="email" id="reg-email" name="email" required autocomplete="email" placeholder="correo@ejemplo.com">
           </div>
 
           <div class="auth-field">

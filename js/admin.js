@@ -1,11 +1,11 @@
 // js/admin.js
-// Panel Docente UNACH:
+// Panel Docente — Ecuaciones Diferenciales:
 // - Resumen ejecutivo con KPIs, 3 gráficas de pastel/dona (SVG) y barras de progreso
 // - Directorio completo de Usuarios y Estudiantes con asignación/revocación del rol de Profesor
 // - Desglose de rendimiento por sección, subtema/ley y Práctica Libre.
 
-import { api } from './api.js?v=8';
-import { isAdmin, getUser, signOut } from './auth.js?v=8';
+import { api } from './api.js?v=10';
+import { isAdmin, getUser, signOut } from './auth.js?v=10';
 import { openModal, closeActiveModal } from './modal.js';
 
 function escapeHtml(str) {
@@ -171,7 +171,7 @@ WHERE email = 'TU_EMAIL';</pre>
       <header class="admin-head">
         <div>
           <span class="auth-badge" style="margin-bottom:.35rem;">Administración Académica</span>
-          <h2>Panel Docente UNACH</h2>
+          <h2>Panel Docente — Ecuaciones Diferenciales</h2>
           <p class="admin-sub">Sesión activa: <strong>${escapeHtml(currentUser?.fullName || currentUser?.email || '')}</strong> (${escapeHtml(currentUser?.email ?? '')})</p>
         </div>
         <div class="d-flex" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">

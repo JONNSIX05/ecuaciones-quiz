@@ -12,7 +12,7 @@ adminRouter.use(authenticateToken, requireAdmin);
 
 /**
  * GET /admin/dashboard
- * Retorna las métricas consolidadas para el panel docente UNACH.
+ * Retorna las métricas consolidadas para el panel docente.
  */
 adminRouter.get('/dashboard', async (req, res, next) => {
   try {

@@ -1,10 +1,10 @@
 /* ============================================================
    base.css — Reset, variables, tipografía y layout base
-   Identidad visual institucional: UNACH (Azul, Oro y Blanco)
+   Identidad visual: Ecuaciones Diferenciales (Azul, Oro y Blanco)
    ============================================================ */
 
 :root {
-  /* Paleta institucional UNACH */
+  /* Paleta cromática principal */
   --unach-navy-900: #041548;
   --unach-navy: #132652;
   --unach-header: #00294f;
