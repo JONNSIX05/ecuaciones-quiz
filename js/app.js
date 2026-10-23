@@ -15,7 +15,20 @@ import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
 import { isApiConfigured } from './api.js?v=10';
-import { getSession, signIn, signUp, signOut, isAdmin, getCurrentTermsVersion, hasAcceptedCurrentTerms, acceptTerms } from './auth.js?v=10';
+import {
+  getSession,
+  getUser,
+  signIn,
+  signUp,
+  signOut,
+  isAdmin,
+  getCurrentTermsVersion,
+  hasAcceptedCurrentTerms,
+  acceptTerms,
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
+} from './auth.js?v=10';
 import { TERMS_DEFAULT, termsToHtml } from './terms.js?v=10';
 import { saveAttempt } from './results.js?v=10';
 import { renderAdminDashboard } from './admin.js?v=10';
@@ -94,7 +107,8 @@ function updateUserBar(user, isUserAdmin) {
   if (!bar) return;
   if (!user) {
     const isRegisterRoute = (window.location.hash || '').includes('registro');
-    if (isRegisterRoute) {
+    const isRecoveryRoute = (window.location.hash || '').includes('recuperar');
+    if (isRegisterRoute || isRecoveryRoute) {
       bar.innerHTML = `<a class="btn btn-gold btn-small" href="#/">Iniciar sesión</a>`;
     } else {
       bar.innerHTML = `<a class="btn btn-gold btn-small" href="#/registro">Registrarse</a>`;
@@ -106,8 +120,11 @@ function updateUserBar(user, isUserAdmin) {
   const displayName = (user.fullName || user.full_name || '').trim();
   const labelText = displayName ? `${displayName} (${user.email})` : user.email;
   bar.innerHTML = `
-    <span class="user-email" title="${escapeAttr(labelText)}">${escapeHtml(displayName || user.email)}</span>
+    <a href="#/perfil" class="user-email-link" title="Mi Perfil (${escapeAttr(labelText)})" style="text-decoration:none;">
+      <span class="user-email" style="cursor:pointer;">${escapeHtml(displayName || user.email)}</span>
+    </a>
     ${adminBadge}
+    <a class="btn btn-soft btn-small" href="#/perfil" title="Panel de estudiante">Mi Perfil</a>
     ${adminBtn}
     <button id="nav-logout-btn" class="btn btn-soft btn-small" type="button">Cerrar sesión</button>
   `;
@@ -127,7 +144,7 @@ function updateUserBar(user, isUserAdmin) {
    ------------------------------------------------------------- */
 async function route() {
   const hash = window.location.hash || '#/';
-  const seg = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const seg = hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean);
 
   // Verificacion de sesion en API
   if (isApiConfigured()) {
@@ -146,6 +163,10 @@ async function route() {
         renderRegister();
         return;
       }
+      if (seg[0] === 'recuperar') {
+        renderPasswordRecovery();
+        return;
+      }
       // Cualquier otra ruta o la raíz (#/) muestra la vista principal de login
       renderLogin();
       return;
@@ -154,6 +175,16 @@ async function route() {
     // Usuario autenticado que navega a login o registro es llevado al menú
     if (seg[0] === 'login' || seg[0] === 'registro') {
       window.location.hash = '#/';
+      return;
+    }
+
+    if (seg[0] === 'recuperar') {
+      renderPasswordRecovery();
+      return;
+    }
+
+    if (seg[0] === 'perfil') {
+      renderStudentProfile();
       return;
     }
 
@@ -967,7 +998,10 @@ function renderLogin() {
             </div>
 
             <div class="auth-field">
-              <label for="login-password">Contraseña</label>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <label for="login-password">Contraseña</label>
+                <a href="#/recuperar" class="auth-forgot-link">¿Olvidaste tu contraseña?</a>
+              </div>
               <div class="auth-input-wrapper">
                 <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="Tu contraseña">
                 <button type="button" class="auth-pwd-toggle" id="login-pwd-toggle" aria-label="Mostrar contraseña">Ver</button>
@@ -1204,6 +1238,462 @@ function renderRegister() {
       msgEl.className = 'auth-msg auth-err';
       submitBtn.disabled = false;
     }
+  });
+}
+
+/* -------------------------------------------------------------
+   Vista: Recuperación de contraseña (pública)
+   ------------------------------------------------------------- */
+function renderPasswordRecovery() {
+  // Extraer token y email si vienen en URL (hash o query)
+  const fullHash = window.location.hash || '';
+  const qIdx = fullHash.indexOf('?');
+  const hashQuery = qIdx !== -1 ? fullHash.slice(qIdx) : '';
+  const urlParams = new URLSearchParams(window.location.search || hashQuery);
+  const initialToken = urlParams.get('token') || '';
+  const initialEmail = urlParams.get('email') || '';
+
+  const defaultTab = initialToken ? 'reset' : 'request';
+
+  view.innerHTML = `
+    <div class="auth-wrapper">
+      <div class="auth-card">
+        <header class="auth-header">
+          <span class="auth-badge">Seguridad de la cuenta</span>
+          <h2 class="auth-title">Recuperar contraseña</h2>
+          <p class="auth-sub">Restaura el acceso a tu cuenta académica para continuar practicando.</p>
+        </header>
+
+        <div class="auth-tabs" role="tablist">
+          <button type="button" id="tab-btn-request" class="auth-tab-btn ${defaultTab === 'request' ? 'is-active' : ''}" role="tab">1. Solicitar enlace</button>
+          <button type="button" id="tab-btn-reset" class="auth-tab-btn ${defaultTab === 'reset' ? 'is-active' : ''}" role="tab">2. Ingresar código/token</button>
+        </div>
+
+        <!-- Panel 1: Solicitar código/enlace -->
+        <div id="panel-request" style="display:${defaultTab === 'request' ? 'block' : 'none'};">
+          <form id="recovery-req-form" class="auth-form" novalidate>
+            <div class="auth-field">
+              <label for="recovery-req-email">Correo electrónico registrado</label>
+              <input type="email" id="recovery-req-email" name="email" required autocomplete="email"
+                value="${escapeAttr(initialEmail)}" placeholder="alumno@ejemplo.com">
+            </div>
+
+            <p style="font-size:0.84rem;color:var(--muted);line-height:1.4;margin:0;">
+              Ingresa el correo con el que te diste de alta. Te enviaremos instrucciones con un token de un solo uso válido por 30 minutos.
+            </p>
+
+            <div id="recovery-req-msg" class="auth-msg" role="status"></div>
+
+            <button id="recovery-req-submit" class="btn btn-primary btn-block" type="submit">
+              Enviar instrucciones de recuperación
+            </button>
+          </form>
+        </div>
+
+        <!-- Panel 2: Restablecer con código/token -->
+        <div id="panel-reset" style="display:${defaultTab === 'reset' ? 'block' : 'none'};">
+          <form id="recovery-reset-form" class="auth-form" novalidate>
+            <div class="auth-field">
+              <label for="recovery-token">Código o token de recuperación</label>
+              <input type="text" id="recovery-token" name="token" required minlength="6"
+                value="${escapeAttr(initialToken)}" placeholder="Ingresa o pega el token">
+            </div>
+
+            <div class="auth-field">
+              <label for="recovery-new-password">Nueva contraseña</label>
+              <div class="auth-input-wrapper">
+                <input type="password" id="recovery-new-password" name="password" required minlength="8"
+                  autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                <button type="button" class="auth-pwd-toggle" id="recovery-pwd-toggle" aria-label="Mostrar contraseña">Ver</button>
+              </div>
+            </div>
+
+            <div class="auth-field">
+              <label for="recovery-confirm-password">Confirmar nueva contraseña</label>
+              <input type="password" id="recovery-confirm-password" name="confirm-password" required minlength="8"
+                autocomplete="new-password" placeholder="Repite la contraseña">
+            </div>
+
+            <div id="recovery-reset-msg" class="auth-msg" role="status"></div>
+
+            <button id="recovery-reset-submit" class="btn btn-primary btn-block" type="submit">
+              Restablecer contraseña
+            </button>
+          </form>
+        </div>
+
+        <div class="auth-switch">
+          ¿Recordaste tu contraseña? <a href="#/">Inicia sesión aquí</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Gestión de pestañas
+  const tabBtnRequest = view.querySelector('#tab-btn-request');
+  const tabBtnReset = view.querySelector('#tab-btn-reset');
+  const panelRequest = view.querySelector('#panel-request');
+  const panelReset = view.querySelector('#panel-reset');
+
+  function setTab(tab) {
+    if (tab === 'request') {
+      tabBtnRequest.classList.add('is-active');
+      tabBtnReset.classList.remove('is-active');
+      panelRequest.style.display = 'block';
+      panelReset.style.display = 'none';
+    } else {
+      tabBtnRequest.classList.remove('is-active');
+      tabBtnReset.classList.add('is-active');
+      panelRequest.style.display = 'none';
+      panelReset.style.display = 'block';
+    }
+  }
+
+  tabBtnRequest.addEventListener('click', () => setTab('request'));
+  tabBtnReset.addEventListener('click', () => setTab('reset'));
+
+  // Toggle de visualización de contraseña
+  const newPwdInput = view.querySelector('#recovery-new-password');
+  const pwdToggleBtn = view.querySelector('#recovery-pwd-toggle');
+  pwdToggleBtn.addEventListener('click', () => {
+    const isPwd = newPwdInput.type === 'password';
+    newPwdInput.type = isPwd ? 'text' : 'password';
+    pwdToggleBtn.textContent = isPwd ? 'Ocultar' : 'Ver';
+  });
+
+  // Manejador del Formulario 1: Solicitar
+  const reqForm = view.querySelector('#recovery-req-form');
+  const reqEmailInput = view.querySelector('#recovery-req-email');
+  const reqMsgEl = view.querySelector('#recovery-req-msg');
+  const reqSubmitBtn = view.querySelector('#recovery-req-submit');
+
+  reqForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = reqEmailInput.value.trim();
+    if (!email || !email.includes('@')) {
+      reqMsgEl.textContent = 'Por favor ingresa un correo electrónico válido.';
+      reqMsgEl.className = 'auth-msg auth-err';
+      reqEmailInput.focus();
+      return;
+    }
+
+    reqSubmitBtn.disabled = true;
+    reqMsgEl.textContent = 'Procesando solicitud…';
+    reqMsgEl.className = 'auth-msg';
+
+    try {
+      const res = await requestPasswordReset(email);
+      if (!res.ok && res.error) {
+        reqMsgEl.textContent = res.error.message || 'Error al procesar la solicitud.';
+        reqMsgEl.className = 'auth-msg auth-err';
+        reqSubmitBtn.disabled = false;
+        return;
+      }
+
+      reqMsgEl.innerHTML = `
+        ✓ ${escapeHtml(res.message || 'Solicitud enviada.')}<br>
+        <span style="font-size:0.8rem;color:var(--ink-soft);font-weight:normal;display:block;margin-top:0.35rem;">
+          Revisa tu bandeja de entrada o spam. Si recibiste un código/token, puedes cambiar de pestaña para ingresarlo.
+        </span>
+      `;
+      reqMsgEl.className = 'auth-msg auth-ok';
+      reqSubmitBtn.disabled = false;
+
+      // Si el servidor o mock retornó un token para pruebas, lo precargamos
+      if (res.token) {
+        const tokenIn = view.querySelector('#recovery-token');
+        if (tokenIn) tokenIn.value = res.token;
+        setTimeout(() => setTab('reset'), 1800);
+      }
+    } catch (err) {
+      reqMsgEl.textContent = err.message || 'Error inesperado.';
+      reqMsgEl.className = 'auth-msg auth-err';
+      reqSubmitBtn.disabled = false;
+    }
+  });
+
+  // Manejador del Formulario 2: Restablecer
+  const resetForm = view.querySelector('#recovery-reset-form');
+  const tokenInput = view.querySelector('#recovery-token');
+  const confirmPwdInput = view.querySelector('#recovery-confirm-password');
+  const resetMsgEl = view.querySelector('#recovery-reset-msg');
+  const resetSubmitBtn = view.querySelector('#recovery-reset-submit');
+
+  resetForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = tokenInput.value.trim();
+    const password = newPwdInput.value;
+    const confirm = confirmPwdInput.value;
+
+    if (!token) {
+      resetMsgEl.textContent = 'Ingresa el código o token de recuperación.';
+      resetMsgEl.className = 'auth-msg auth-err';
+      tokenInput.focus();
+      return;
+    }
+    if (!password || password.length < 8) {
+      resetMsgEl.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+      resetMsgEl.className = 'auth-msg auth-err';
+      newPwdInput.focus();
+      return;
+    }
+    if (password !== confirm) {
+      resetMsgEl.textContent = 'Las contraseñas no coinciden.';
+      resetMsgEl.className = 'auth-msg auth-err';
+      confirmPwdInput.focus();
+      return;
+    }
+
+    resetSubmitBtn.disabled = true;
+    resetMsgEl.textContent = 'Restableciendo contraseña…';
+    resetMsgEl.className = 'auth-msg';
+
+    try {
+      const res = await resetPassword(token, password);
+      if (!res.ok && res.error) {
+        resetMsgEl.textContent = res.error.message || 'El token es inválido o ha expirado.';
+        resetMsgEl.className = 'auth-msg auth-err';
+        resetSubmitBtn.disabled = false;
+        return;
+      }
+
+      resetMsgEl.textContent = '¡Contraseña restablecida exitosamente! Redirigiendo al inicio de sesión…';
+      resetMsgEl.className = 'auth-msg auth-ok';
+
+      setTimeout(() => {
+        window.location.hash = '#/';
+        route();
+      }, 1500);
+    } catch (err) {
+      resetMsgEl.textContent = err.message || 'Error al actualizar contraseña.';
+      resetMsgEl.className = 'auth-msg auth-err';
+      resetSubmitBtn.disabled = false;
+    }
+  });
+}
+
+/* -------------------------------------------------------------
+   Vista: Panel de Usuario / Perfil de Estudiante
+   ------------------------------------------------------------- */
+async function renderStudentProfile() {
+  const user = session?.user || (await getUser());
+  if (!user) {
+    window.location.hash = '#/';
+    route();
+    return;
+  }
+
+  const fullName = (user.fullName || user.full_name || 'Estudiante').trim();
+  const initial = (fullName.charAt(0) || user.email.charAt(0) || 'E').toUpperCase();
+  const grado = user.grado || '';
+  const grupo = user.grupo || '';
+  const gradoGrupo = [grado, grupo].filter(Boolean).join(' ') || 'Sin asignar';
+  const roleLabel = window.__isAdmin ? 'Profesor' : 'Estudiante';
+  const roleBadgeClass = window.__isAdmin ? 'badge-admin' : 'auth-badge';
+
+  // Calcular estadísticas locales o de la sesión
+  let totalScore = 0;
+  let totalQuestions = 0;
+  let attemptsCount = 0;
+
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const k = window.localStorage.key(i);
+    if (k && k.startsWith('eqd:result:')) {
+      try {
+        const item = JSON.parse(window.localStorage.getItem(k));
+        if (item && typeof item.score === 'number' && typeof item.total === 'number') {
+          totalScore += item.score;
+          totalQuestions += item.total;
+          attemptsCount++;
+        }
+      } catch (_) {}
+    }
+  }
+
+  const accuracyPct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
+  view.innerHTML = `
+    <div class="back-row">
+      <a class="back-link" href="#/">← Volver al menú de módulos</a>
+    </div>
+
+    <div class="profile-wrapper">
+      <!-- Tarjeta 1: Información y Estadísticas del Estudiante -->
+      <article class="profile-card">
+        <div class="profile-hero">
+          <div class="profile-avatar">${escapeHtml(initial)}</div>
+          <div class="profile-details">
+            <h2>${escapeHtml(fullName)}</h2>
+            <div class="profile-email">${escapeHtml(user.email)}</div>
+            <div class="profile-meta-badges">
+              <span class="badge ${roleBadgeClass}">${escapeHtml(roleLabel)}</span>
+              <span class="badge">Grado/Grupo: ${escapeHtml(gradoGrupo)}</span>
+              <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);border:1px solid var(--line);">ID: ${escapeHtml((user.id || '').slice(0, 8))}…</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-stats-grid">
+          <div class="profile-stat-box">
+            <div class="profile-stat-value">${attemptsCount}</div>
+            <div class="profile-stat-label">Cuestionarios resueltos</div>
+          </div>
+          <div class="profile-stat-box">
+            <div class="profile-stat-value">${totalScore} / ${totalQuestions}</div>
+            <div class="profile-stat-label">Aciertos conseguidos</div>
+          </div>
+          <div class="profile-stat-box">
+            <div class="profile-stat-value" style="color:${accuracyPct >= 60 ? 'var(--correct)' : 'var(--unach-navy)'};">
+              ${totalQuestions > 0 ? accuracyPct + '%' : '–'}
+            </div>
+            <div class="profile-stat-label">Promedio de efectividad</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Tarjeta 2: Cambio de Contraseña -->
+      <article class="profile-card">
+        <header style="margin-bottom:1.2rem;">
+          <h3 style="font-size:1.2rem;color:var(--unach-navy);font-weight:800;margin-bottom:0.25rem;">
+            Seguridad de la cuenta
+          </h3>
+          <p style="font-size:0.88rem;color:var(--muted);margin:0;">
+            Actualiza tu contraseña periódicamente para proteger tu historial académico.
+          </p>
+        </header>
+
+        <form id="profile-pwd-form" class="auth-form" novalidate style="max-width:500px;">
+          <div class="auth-field">
+            <label for="prof-curr-pwd">Contraseña actual</label>
+            <div class="auth-input-wrapper">
+              <input type="password" id="prof-curr-pwd" name="currentPassword" required autocomplete="current-password" placeholder="Tu contraseña actual">
+              <button type="button" class="auth-pwd-toggle" id="prof-curr-toggle">Ver</button>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="prof-new-pwd">Nueva contraseña</label>
+            <div class="auth-input-wrapper">
+              <input type="password" id="prof-new-pwd" name="newPassword" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+              <button type="button" class="auth-pwd-toggle" id="prof-new-toggle">Ver</button>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="prof-conf-pwd">Confirmar nueva contraseña</label>
+            <input type="password" id="prof-conf-pwd" name="confirmPassword" required minlength="8" autocomplete="new-password" placeholder="Repite tu nueva contraseña">
+          </div>
+
+          <div id="prof-pwd-msg" class="auth-msg" role="status"></div>
+
+          <div>
+            <button id="prof-pwd-submit" class="btn btn-primary" type="submit">
+              Guardar nueva contraseña
+            </button>
+          </div>
+        </form>
+      </article>
+
+      <!-- Tarjeta 3: Cierre de Sesión y Acciones -->
+      <article class="profile-card" style="border-left:4px solid var(--wrong);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h4 style="color:var(--ink);font-weight:700;margin-bottom:0.25rem;">Cerrar sesión</h4>
+            <p style="color:var(--muted);font-size:0.86rem;margin:0;">
+              Finaliza tu sesión activa en este dispositivo para salvaguardar tu cuenta.
+            </p>
+          </div>
+          <button id="profile-logout-btn" class="btn btn-soft" style="color:var(--wrong);border-color:#fca5a5;font-weight:700;" type="button">
+            Cerrar sesión
+          </button>
+        </div>
+      </article>
+    </div>
+  `;
+
+  // Toggle visualización para contraseñas en perfil
+  const currPwdIn = view.querySelector('#prof-curr-pwd');
+  const newPwdIn = view.querySelector('#prof-new-pwd');
+  const confPwdIn = view.querySelector('#prof-conf-pwd');
+  const currToggle = view.querySelector('#prof-curr-toggle');
+  const newToggle = view.querySelector('#prof-new-toggle');
+
+  currToggle?.addEventListener('click', () => {
+    const isPwd = currPwdIn.type === 'password';
+    currPwdIn.type = isPwd ? 'text' : 'password';
+    currToggle.textContent = isPwd ? 'Ocultar' : 'Ver';
+  });
+
+  newToggle?.addEventListener('click', () => {
+    const isPwd = newPwdIn.type === 'password';
+    newPwdIn.type = isPwd ? 'text' : 'password';
+    newToggle.textContent = isPwd ? 'Ocultar' : 'Ver';
+  });
+
+  // Manejo de cambio de contraseña
+  const pwdForm = view.querySelector('#profile-pwd-form');
+  const pwdMsg = view.querySelector('#prof-pwd-msg');
+  const pwdSubmitBtn = view.querySelector('#prof-pwd-submit');
+
+  pwdForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currentPassword = currPwdIn.value;
+    const newPassword = newPwdIn.value;
+    const confirm = confPwdIn.value;
+
+    if (!currentPassword) {
+      pwdMsg.textContent = 'Ingresa tu contraseña actual.';
+      pwdMsg.className = 'auth-msg auth-err';
+      currPwdIn.focus();
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      pwdMsg.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+      pwdMsg.className = 'auth-msg auth-err';
+      newPwdIn.focus();
+      return;
+    }
+    if (newPassword !== confirm) {
+      pwdMsg.textContent = 'La nueva contraseña y su confirmación no coinciden.';
+      pwdMsg.className = 'auth-msg auth-err';
+      confPwdIn.focus();
+      return;
+    }
+
+    pwdSubmitBtn.disabled = true;
+    pwdMsg.textContent = 'Actualizando contraseña…';
+    pwdMsg.className = 'auth-msg';
+
+    try {
+      const res = await changePassword(currentPassword, newPassword);
+      if (!res.ok && res.error) {
+        pwdMsg.textContent = res.error.message || 'Error al actualizar contraseña.';
+        pwdMsg.className = 'auth-msg auth-err';
+        pwdSubmitBtn.disabled = false;
+        return;
+      }
+
+      pwdMsg.textContent = '✓ ' + (res.message || 'Contraseña actualizada con éxito.');
+      pwdMsg.className = 'auth-msg auth-ok';
+      pwdSubmitBtn.disabled = false;
+      pwdForm.reset();
+    } catch (err) {
+      pwdMsg.textContent = err.message || 'Error inesperado al guardar la contraseña.';
+      pwdMsg.className = 'auth-msg auth-err';
+      pwdSubmitBtn.disabled = false;
+    }
+  });
+
+  // Botón de cerrar sesión dentro del panel
+  view.querySelector('#profile-logout-btn')?.addEventListener('click', async () => {
+    if (!confirm('¿Estás seguro de que deseas cerrar sesión?')) return;
+    await signOut();
+    window.__currentEmail = null;
+    window.__isAdmin = false;
+    session = null;
+    updateUserBar(null, false);
+    window.location.hash = '#/';
+    route();
   });
 }
 

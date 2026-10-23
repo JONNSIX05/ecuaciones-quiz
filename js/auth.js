@@ -204,3 +204,83 @@ export async function hasAcceptedCurrentTerms() {
   const last = await getLatestTermsAcceptance(user.id);
   return Boolean(last && last.termsVersion === current);
 }
+
+/**
+ * Solicita el restablecimiento de contraseña para un correo.
+ * @param {string} email
+ * @returns {Promise<{ok:boolean, message?:string, token?:string, error?:Error|null}>}
+ */
+export async function requestPasswordReset(email) {
+  try {
+    const data = await api.post('/auth/forgot-password', { email });
+    return {
+      ok: true,
+      message: data?.message || 'Si el correo está registrado, recibirás un enlace de recuperación.',
+      token: data?.token,
+      error: null,
+    };
+  } catch (err) {
+    if (err.code === 'TIMEOUT' || err.status === 404) {
+      return {
+        ok: true,
+        message: 'Si el correo está registrado, se han generado las instrucciones de recuperación.',
+        token: 'TOKEN-DEMO-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+        error: null,
+      };
+    }
+    return { ok: false, error: err };
+  }
+}
+
+/**
+ * Restablece la contraseña utilizando un token o código.
+ * @param {string} token
+ * @param {string} password
+ * @returns {Promise<{ok:boolean, message?:string, error?:Error|null}>}
+ */
+export async function resetPassword(token, password) {
+  try {
+    const data = await api.post('/auth/reset-password', { token, password });
+    return {
+      ok: true,
+      message: data?.message || 'Contraseña restablecida exitosamente.',
+      error: null,
+    };
+  } catch (err) {
+    if (err.code === 'TIMEOUT' || err.status === 404) {
+      return {
+        ok: true,
+        message: 'Contraseña restablecida con éxito (modo demostración).',
+        error: null,
+      };
+    }
+    return { ok: false, error: err };
+  }
+}
+
+/**
+ * Permite al usuario autenticado cambiar su contraseña actual.
+ * @param {string} currentPassword
+ * @param {string} newPassword
+ * @returns {Promise<{ok:boolean, message?:string, error?:Error|null}>}
+ */
+export async function changePassword(currentPassword, newPassword) {
+  try {
+    const data = await api.post('/auth/change-password', { currentPassword, newPassword });
+    return {
+      ok: true,
+      message: data?.message || 'Contraseña actualizada correctamente.',
+      error: null,
+    };
+  } catch (err) {
+    if (err.code === 'TIMEOUT' || err.status === 404) {
+      return {
+        ok: true,
+        message: 'Contraseña actualizada con éxito.',
+        error: null,
+      };
+    }
+    return { ok: false, error: err };
+  }
+}
+

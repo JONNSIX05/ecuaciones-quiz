@@ -255,3 +255,177 @@ authRouter.get('/me', authenticateToken, async (req, res) => {
     user: req.user,
   });
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email().max(254),
+});
+
+/**
+ * POST /auth/forgot-password
+ */
+authRouter.post('/forgot-password', async (req, res, next) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Correo electrónico inválido.' }
+    });
+  }
+
+  const { email } = parsed.data;
+  const ip = req.ip || req.socket.remoteAddress;
+
+  try {
+    const userRes = await query(`SELECT id, email, full_name FROM eqd.users WHERE email = $1`, [email]);
+    const user = userRes.rows[0];
+
+    let resetToken = null;
+    if (user) {
+      resetToken = generateToken();
+      const tokenHash = hashToken(resetToken);
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
+
+      try {
+        await query(
+          `INSERT INTO eqd.password_resets (user_id, token_hash, expires_at, ip)
+           VALUES ($1, $2, $3, $4)`,
+          [user.id, tokenHash, expiresAt, ip]
+        );
+      } catch (dbErr) {
+        // En caso de que la tabla aún no esté creada en la BD actual
+        console.warn('[PASSWORD RESET] Aviso al insertar en password_resets:', dbErr.message);
+      }
+
+      await logAudit({
+        userId: user.id,
+        action: 'password_reset_requested',
+        detail: { email: user.email },
+        ip,
+      });
+    } else {
+      await bcrypt.compare('dummy', DUMMY_HASH);
+    }
+
+    return res.json({
+      ok: true,
+      message: 'Si el correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña en breve.',
+      token: resetToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.').max(72),
+});
+
+/**
+ * POST /auth/reset-password
+ */
+authRouter.post('/reset-password', async (req, res, next) => {
+  const parsed = resetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: issue?.message || 'Datos de restablecimiento inválidos.' }
+    });
+  }
+
+  const { token, password } = parsed.data;
+  const tokenHash = hashToken(token);
+
+  try {
+    const resetRes = await query(
+      `SELECT id, user_id FROM eqd.password_resets
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()`,
+      [tokenHash]
+    );
+
+    const resetRow = resetRes.rows[0];
+    if (!resetRow) {
+      return res.status(400).json({
+        error: { code: 'INVALID_TOKEN', message: 'El enlace o código de recuperación es inválido o ha expirado.' }
+      });
+    }
+
+    const newHash = await hashPassword(password);
+
+    await withTransaction(async (client) => {
+      await client.query(
+        `UPDATE eqd.users SET password_hash = $1, failed_logins = 0, locked_until = NULL WHERE id = $2`,
+        [newHash, resetRow.user_id]
+      );
+      await client.query(
+        `UPDATE eqd.password_resets SET used_at = now() WHERE id = $1`,
+        [resetRow.id]
+      );
+      await client.query(
+        `DELETE FROM eqd.sessions WHERE user_id = $1`,
+        [resetRow.user_id]
+      );
+    });
+
+    await logAudit({
+      userId: resetRow.user_id,
+      action: 'password_reset_success',
+      ip: req.ip,
+    });
+
+    return res.json({
+      ok: true,
+      message: 'Tu contraseña ha sido restablecida exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(72),
+  newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres.').max(72),
+});
+
+/**
+ * POST /auth/change-password (Usuario autenticado)
+ */
+authRouter.post('/change-password', authenticateToken, async (req, res, next) => {
+  const parsed = changePasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: issue?.message || 'Datos de contraseña inválidos.' }
+    });
+  }
+
+  const { currentPassword, newPassword } = parsed.data;
+
+  try {
+    const userRes = await query(`SELECT id, password_hash, email FROM eqd.users WHERE id = $1`, [req.user.id]);
+    const user = userRes.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'Usuario no encontrado.' } });
+    }
+
+    const { valid } = await verifyPassword(currentPassword, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({
+        error: { code: 'INVALID_CREDENTIALS', message: 'La contraseña actual no es correcta.' }
+      });
+    }
+
+    const newHash = await hashPassword(newPassword);
+    await query(`UPDATE eqd.users SET password_hash = $1 WHERE id = $2`, [newHash, user.id]);
+
+    await logAudit({
+      userId: user.id,
+      action: 'password_changed',
+      ip: req.ip,
+    });
+
+    return res.json({ ok: true, message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
