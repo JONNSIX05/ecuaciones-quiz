@@ -7,6 +7,12 @@ const schema = z.object({
   DATABASE_URL: z.string().min(10).default('postgresql://eqd_app:dev@127.0.0.1:5432/eqd'),
   CORS_ORIGIN: z.string().default('https://jonnsix05.github.io'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  PUBLIC_APP_URL: z.string().default('https://jonnsix05.github.io/ecuaciones-quiz'),
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_USER: z.string().optional().default(''),
+  SMTP_PASS: z.string().optional().default(''),
+  SMTP_FROM: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

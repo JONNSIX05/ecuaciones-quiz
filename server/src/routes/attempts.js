@@ -124,3 +124,38 @@ attemptsRouter.post('/practice', authenticateToken, async (req, res, next) => {
     next(err);
   }
 });
+
+/**
+ * GET /attempts/me
+ * Devuelve el historial completo de intentos (quiz y práctica libre) del estudiante autenticado.
+ */
+attemptsRouter.get('/me', authenticateToken, async (req, res, next) => {
+  try {
+    const [quizRes, practiceRes] = await Promise.all([
+      query(
+        `SELECT id, section_id, subtema_id, law_id, law_name, difficulty, score, total, created_at
+         FROM eqd.quiz_attempts
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 200`,
+        [req.user.id]
+      ),
+      query(
+        `SELECT id, input, topic, correct, created_at
+         FROM eqd.practice_attempts
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 200`,
+        [req.user.id]
+      ),
+    ]);
+
+    return res.json({
+      quizAttempts: quizRes.rows,
+      practiceAttempts: practiceRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+

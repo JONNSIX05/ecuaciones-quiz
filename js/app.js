@@ -14,7 +14,7 @@ import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
-import { isApiConfigured } from './api.js?v=10';
+import { api, isApiConfigured } from './api.js?v=11';
 import {
   getSession,
   getUser,
@@ -28,12 +28,13 @@ import {
   requestPasswordReset,
   resetPassword,
   changePassword,
-} from './auth.js?v=10';
-import { TERMS_DEFAULT, termsToHtml } from './terms.js?v=10';
-import { saveAttempt } from './results.js?v=10';
-import { renderAdminDashboard } from './admin.js?v=10';
-import { renderAdminQuestions } from './admin-questions.js?v=10';
-import { getLaw as getLawRemote } from './questions.js?v=10';
+  updateOwnProfile,
+} from './auth.js?v=11';
+import { TERMS_DEFAULT, termsToHtml } from './terms.js?v=11';
+import { saveAttempt } from './results.js?v=11';
+import { renderAdminDashboard } from './admin.js?v=11';
+import { renderAdminQuestions } from './admin-questions.js?v=11';
+import { getLaw as getLawRemote } from './questions.js?v=11';
 
 const view = document.getElementById('view');
 
@@ -1393,18 +1394,11 @@ function renderPasswordRecovery() {
       reqMsgEl.innerHTML = `
         ✓ ${escapeHtml(res.message || 'Solicitud enviada.')}<br>
         <span style="font-size:0.8rem;color:var(--ink-soft);font-weight:normal;display:block;margin-top:0.35rem;">
-          Revisa tu bandeja de entrada o spam. Si recibiste un código/token, puedes cambiar de pestaña para ingresarlo.
+          Revisa tu bandeja de entrada o carpeta de spam. Cuando tengas tu código, abre la pestaña <strong>"2. Ingresar código/token"</strong> para definir tu nueva contraseña.
         </span>
       `;
       reqMsgEl.className = 'auth-msg auth-ok';
       reqSubmitBtn.disabled = false;
-
-      // Si el servidor o mock retornó un token para pruebas, lo precargamos
-      if (res.token) {
-        const tokenIn = view.querySelector('#recovery-token');
-        if (tokenIn) tokenIn.value = res.token;
-        setTimeout(() => setTab('reset'), 1800);
-      }
     } catch (err) {
       reqMsgEl.textContent = err.message || 'Error inesperado.';
       reqMsgEl.className = 'auth-msg auth-err';
@@ -1473,14 +1467,153 @@ function renderPasswordRecovery() {
 }
 
 /* -------------------------------------------------------------
-   Vista: Panel de Usuario / Perfil de Estudiante
+   Vista: Panel de Usuario / Dashboard Personal de Estudiante
    ------------------------------------------------------------- */
+function renderStudentProgressBar(pct) {
+  const safePct = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  let colorClass = 'bar-high';
+  if (safePct < 60) colorClass = 'bar-low';
+  else if (safePct < 80) colorClass = 'bar-mid';
+  return `
+    <div class="admin-progress-cell">
+      <div class="admin-progress-track" aria-hidden="true">
+        <div class="admin-progress-fill ${colorClass}" style="width:${safePct}%"></div>
+      </div>
+      <span class="admin-progress-label">${safePct}%</span>
+    </div>`;
+}
+
+function renderStudentDonutCard(cfg) {
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const cleanSlices = cfg.slices.filter((s) => s.value > 0);
+  const total = cleanSlices.reduce((acc, s) => acc + s.value, 0);
+
+  let cumulativePct = 0;
+  const circlesHtml =
+    total === 0
+      ? `<circle cx="80" cy="80" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="22" />`
+      : cleanSlices
+          .map((s) => {
+            const pct = s.value / total;
+            const dash = pct * circumference;
+            const gap = circumference - dash;
+            const offset = -cumulativePct * circumference;
+            cumulativePct += pct;
+            return `<circle cx="80" cy="80" r="${radius}" fill="none"
+              stroke="${s.color}" stroke-width="24"
+              stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+              stroke-dashoffset="${offset.toFixed(2)}"
+              transform="rotate(-90 80 80)">
+              <title>${escapeHtml(s.label)}: ${s.value} (${Math.round(pct * 100)}%)</title>
+            </circle>`;
+          })
+          .join('');
+
+  const legendHtml = cfg.slices
+    .map((s) => {
+      const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+      return `
+        <li class="pie-legend-item">
+          <span class="pie-dot" style="background:${s.color};"></span>
+          <span class="pie-legend-label">${escapeHtml(s.label)}</span>
+          <span class="pie-legend-val"><strong>${s.value}</strong> <small>(${pct}%)</small></span>
+        </li>`;
+    })
+    .join('');
+
+  return `
+    <article class="pie-card">
+      <header class="pie-card-head">
+        <h3>${escapeHtml(cfg.title)}</h3>
+        <p>${escapeHtml(cfg.subtitle)}</p>
+      </header>
+      <div class="pie-card-body">
+        <div class="pie-svg-wrap">
+          <svg viewBox="0 0 160 160" class="pie-svg" role="img" aria-label="${escapeAttr(cfg.title)}">
+            <circle cx="80" cy="80" r="${radius}" fill="none" stroke="#f1f5f9" stroke-width="24" />
+            ${circlesHtml}
+            <text x="80" y="76" text-anchor="middle" class="pie-center-num">${escapeHtml(cfg.centerValue)}</text>
+            <text x="80" y="96" text-anchor="middle" class="pie-center-sub">${escapeHtml(cfg.centerSub)}</text>
+          </svg>
+        </div>
+        <ul class="pie-legend">${legendHtml}</ul>
+      </div>
+    </article>`;
+}
+
+function fmtShortDate(iso) {
+  if (!iso) return 'Reciente';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '–';
+  return d.toLocaleDateString('es-MX', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function sectionNameById(secId) {
+  return (
+    {
+      algebra: 'Álgebra',
+      'calculo-diferencial': 'Cálculo Diferencial',
+      'calculo-integral': 'Cálculo Integral',
+      'practica-libre': 'Práctica Libre',
+    }[secId] || secId || 'General'
+  );
+}
+
 async function renderStudentProfile() {
   const user = session?.user || (await getUser());
   if (!user) {
     window.location.hash = '#/';
     route();
     return;
+  }
+
+  view.innerHTML = `
+    <div class="back-row">
+      <a class="back-link" href="#/">← Volver al menú de módulos</a>
+    </div>
+    <div class="profile-wrapper" style="max-width:1020px;">
+      <article class="profile-card">
+        <p class="admin-loading">Cargando tu dashboard personal y resultados…</p>
+      </article>
+    </div>
+  `;
+
+  let quizAttempts = [];
+  let practiceAttempts = [];
+
+  try {
+    const data = await api.get('/attempts/me');
+    quizAttempts = Array.isArray(data?.quizAttempts) ? data.quizAttempts : [];
+    practiceAttempts = Array.isArray(data?.practiceAttempts) ? data.practiceAttempts : [];
+  } catch (_) {
+    // Fallback a localStorage si no hay red
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith('eqd:result:')) {
+        try {
+          const item = JSON.parse(window.localStorage.getItem(k));
+          if (item && typeof item.score === 'number' && typeof item.total === 'number') {
+            quizAttempts.push({
+              section_id: item.sectionId || 'algebra',
+              subtema_id: item.subtemaId || '',
+              law_id: item.lawId || k.replace('eqd:result:', ''),
+              law_name: item.lawName || k.replace('eqd:result:', ''),
+              difficulty: item.difficulty || 'balanced',
+              score: item.score,
+              total: item.total,
+              created_at: item.at ? new Date(item.at).toISOString() : null,
+            });
+          }
+        } catch (__) {}
+      }
+    }
   }
 
   const fullName = (user.fullName || user.full_name || 'Estudiante').trim();
@@ -1491,45 +1624,236 @@ async function renderStudentProfile() {
   const roleLabel = window.__isAdmin ? 'Profesor' : 'Estudiante';
   const roleBadgeClass = window.__isAdmin ? 'badge-admin' : 'auth-badge';
 
-  // Calcular estadísticas locales o de la sesión
-  let totalScore = 0;
-  let totalQuestions = 0;
-  let attemptsCount = 0;
+  const attemptsCount = quizAttempts.length;
+  const totalScore = quizAttempts.reduce((acc, a) => acc + (Number(a.score) || 0), 0);
+  const totalQuestions = quizAttempts.reduce((acc, a) => acc + (Number(a.total) || 0), 0);
+  const accuracyPct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
 
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const k = window.localStorage.key(i);
-    if (k && k.startsWith('eqd:result:')) {
-      try {
-        const item = JSON.parse(window.localStorage.getItem(k));
-        if (item && typeof item.score === 'number' && typeof item.total === 'number') {
-          totalScore += item.score;
-          totalQuestions += item.total;
-          attemptsCount++;
-        }
-      } catch (_) {}
-    }
+  const practiceTotal = practiceAttempts.length;
+  const practiceCorrect = practiceAttempts.filter((p) => p.correct).length;
+  const practicePct = practiceTotal > 0 ? Math.round((practiceCorrect / practiceTotal) * 100) : 0;
+
+  // Agregación por sección
+  const secAgg = {
+    algebra: { attempts: 0, correct: 0, total: 0 },
+    'calculo-diferencial': { attempts: 0, correct: 0, total: 0 },
+    'calculo-integral': { attempts: 0, correct: 0, total: 0 },
+  };
+  for (const a of quizAttempts) {
+    const sId = a.section_id || 'algebra';
+    if (!secAgg[sId]) secAgg[sId] = { attempts: 0, correct: 0, total: 0 };
+    secAgg[sId].attempts += 1;
+    secAgg[sId].correct += Number(a.score) || 0;
+    secAgg[sId].total += Number(a.total) || 0;
   }
 
-  const accuracyPct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+  // Agregación por ley/subtema
+  const byLaw = new Map();
+  for (const a of quizAttempts) {
+    const key = `${a.section_id || ''}::${a.law_id || ''}`;
+    const cur = byLaw.get(key) || {
+      sectionId: a.section_id || '',
+      subtemaId: a.subtema_id || '',
+      lawId: a.law_id || '',
+      lawName: a.law_name || a.law_id || 'Tema',
+      attempts: 0,
+      correct: 0,
+      total: 0,
+      bestPct: 0,
+      lastAt: a.created_at,
+    };
+    cur.attempts += 1;
+    cur.correct += Number(a.score) || 0;
+    cur.total += Number(a.total) || 0;
+    const thisPct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
+    if (thisPct > cur.bestPct) cur.bestPct = thisPct;
+    byLaw.set(key, cur);
+  }
+  const lawList = [...byLaw.values()].sort((a, b) => {
+    const avgA = a.total ? a.correct / a.total : 0;
+    const avgB = b.total ? b.correct / b.total : 0;
+    return avgA - avgB; // Mostrar primero los temas que necesitan más refuerzo
+  });
+
+  // Gráfica 1: Efectividad personal
+  const totalRightAll = totalScore + practiceCorrect;
+  const totalAskedAll = totalQuestions + practiceTotal;
+  const totalWrongAll = Math.max(0, totalAskedAll - totalRightAll);
+  const globalPersonalPct = totalAskedAll > 0 ? Math.round((totalRightAll / totalAskedAll) * 100) : 0;
+
+  const pieAccuracyHtml = renderStudentDonutCard({
+    title: 'Efectividad Personal',
+    subtitle: 'Proporción de aciertos y errores en tus evaluaciones',
+    centerValue: totalAskedAll > 0 ? `${globalPersonalPct}%` : '–',
+    centerSub: `${totalAskedAll} reactivos`,
+    slices: [
+      { label: 'Aciertos en Quiz', value: totalScore, color: '#16a34a' },
+      { label: 'Aciertos en Práctica', value: practiceCorrect, color: '#0d9488' },
+      { label: 'Por reforzar (errores)', value: totalWrongAll, color: '#dc2626' },
+    ],
+  });
+
+  // Gráfica 2: Actividad por sección
+  const totalSessionsAll = attemptsCount + practiceTotal;
+  const pieSectionsHtml = renderStudentDonutCard({
+    title: 'Distribución de Estudio',
+    subtitle: 'Cuestionarios y prácticas realizados por área',
+    centerValue: String(totalSessionsAll),
+    centerSub: totalSessionsAll === 1 ? 'actividad' : 'actividades',
+    slices: [
+      { label: 'Álgebra', value: secAgg.algebra.attempts, color: '#132652' },
+      { label: 'Cálculo Diferencial', value: secAgg['calculo-diferencial'].attempts, color: '#0071db' },
+      { label: 'Cálculo Integral', value: secAgg['calculo-integral'].attempts, color: '#c59b27' },
+      { label: 'Práctica Libre', value: practiceTotal, color: '#0d9488' },
+    ],
+  });
+
+  const sectionRowsHtml = Object.entries(secAgg)
+    .map(([secId, v]) => {
+      const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+      return `
+        <tr>
+          <td><strong>${escapeHtml(sectionNameById(secId))}</strong></td>
+          <td>${v.attempts}</td>
+          <td>${v.correct} / ${v.total}</td>
+          <td>${v.total > 0 ? renderStudentProgressBar(pct) : '<span style="color:var(--muted);">Sin intentos aún</span>'}</td>
+          <td><a class="btn btn-soft btn-small" href="#/${escapeAttr(secId)}">Ir a sección</a></td>
+        </tr>`;
+    })
+    .join('');
+
+  const lawsTableHtml =
+    lawList.length === 0
+      ? `<p class="admin-empty">Aún no has completado ningún cuestionario. <a href="#/">Explora los módulos aquí</a> para comenzar.</p>`
+      : `
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Sección</th>
+                <th>Tema / Ley</th>
+                <th>Intentos</th>
+                <th>Aciertos</th>
+                <th>Mejor Nota</th>
+                <th>Dominio Promedio</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lawList
+                .map((item) => {
+                  const avg = item.total > 0 ? Math.round((item.correct / item.total) * 100) : 0;
+                  const targetHref =
+                    item.sectionId && item.subtemaId && item.lawId
+                      ? `#/${item.sectionId}/${item.subtemaId}/${item.lawId}`
+                      : item.sectionId
+                      ? `#/${item.sectionId}`
+                      : '#/';
+                  return `
+                    <tr>
+                      <td>${escapeHtml(sectionNameById(item.sectionId))}</td>
+                      <td><strong>${escapeHtml(item.lawName)}</strong></td>
+                      <td>${item.attempts}</td>
+                      <td>${item.correct}/${item.total}</td>
+                      <td><strong>${item.bestPct}%</strong></td>
+                      <td>${renderStudentProgressBar(avg)}</td>
+                      <td><a class="btn btn-gold btn-small" href="${escapeAttr(targetHref)}">Practicar</a></td>
+                    </tr>`;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+  const recentQuizHtml =
+    quizAttempts.length === 0
+      ? `<p class="admin-empty">Sin cuestionarios registrados todavía.</p>`
+      : `
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Sección</th>
+                <th>Tema / Ley</th>
+                <th>Puntaje</th>
+                <th>Desempeño</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${quizAttempts
+                .slice(0, 15)
+                .map((a) => {
+                  const pct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
+                  return `
+                    <tr>
+                      <td>${fmtShortDate(a.created_at)}</td>
+                      <td>${escapeHtml(sectionNameById(a.section_id))}</td>
+                      <td><strong>${escapeHtml(a.law_name || a.law_id)}</strong></td>
+                      <td><strong>${a.score}/${a.total}</strong></td>
+                      <td>${renderStudentProgressBar(pct)}</td>
+                    </tr>`;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+  const recentPracticeHtml =
+    practiceAttempts.length === 0
+      ? `<p class="admin-empty">Aún no tienes ejercicios en Práctica Libre. <a href="#/practica-libre">Probar Práctica Libre</a>.</p>`
+      : `
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Expresión analizada</th>
+                <th>Método / Fórmula detectada</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${practiceAttempts
+                .slice(0, 10)
+                .map(
+                  (p) => `
+                  <tr>
+                    <td>${fmtShortDate(p.created_at)}</td>
+                    <td><code>${escapeHtml(p.input)}</code></td>
+                    <td><strong>${escapeHtml(p.topic || 'General')}</strong></td>
+                    <td>${
+                      p.correct
+                        ? '<span class="pill pill-ok">Correcto</span>'
+                        : '<span class="pill pill-danger">Incorrecto</span>'
+                    }</td>
+                  </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>`;
 
   view.innerHTML = `
     <div class="back-row">
       <a class="back-link" href="#/">← Volver al menú de módulos</a>
     </div>
 
-    <div class="profile-wrapper">
-      <!-- Tarjeta 1: Información y Estadísticas del Estudiante -->
+    <div class="profile-wrapper" style="max-width:1020px;">
+      <!-- Tarjeta Principal: Identidad y KPIs del Estudiante -->
       <article class="profile-card">
         <div class="profile-hero">
-          <div class="profile-avatar">${escapeHtml(initial)}</div>
+          <div class="profile-avatar" id="prof-hero-avatar">${escapeHtml(initial)}</div>
           <div class="profile-details">
-            <h2>${escapeHtml(fullName)}</h2>
+            <h2 id="prof-hero-name">${escapeHtml(fullName)}</h2>
             <div class="profile-email">${escapeHtml(user.email)}</div>
             <div class="profile-meta-badges">
               <span class="badge ${roleBadgeClass}">${escapeHtml(roleLabel)}</span>
-              <span class="badge">Grado/Grupo: ${escapeHtml(gradoGrupo)}</span>
-              <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);border:1px solid var(--line);">ID: ${escapeHtml((user.id || '').slice(0, 8))}…</span>
+              <span class="badge" id="prof-hero-group">Grado/Grupo: ${escapeHtml(gradoGrupo)}</span>
             </div>
+          </div>
+          <div>
+            <a href="#/" class="btn btn-gold btn-small">Resolver cuestionarios</a>
           </div>
         </div>
 
@@ -1540,76 +1864,260 @@ async function renderStudentProfile() {
           </div>
           <div class="profile-stat-box">
             <div class="profile-stat-value">${totalScore} / ${totalQuestions}</div>
-            <div class="profile-stat-label">Aciertos conseguidos</div>
+            <div class="profile-stat-label">Reactivos acertados</div>
           </div>
           <div class="profile-stat-box">
             <div class="profile-stat-value" style="color:${accuracyPct >= 60 ? 'var(--correct)' : 'var(--unach-navy)'};">
               ${totalQuestions > 0 ? accuracyPct + '%' : '–'}
             </div>
-            <div class="profile-stat-label">Promedio de efectividad</div>
+            <div class="profile-stat-label">Promedio en cuestionarios</div>
+          </div>
+          <div class="profile-stat-box">
+            <div class="profile-stat-value">${practiceCorrect} / ${practiceTotal}</div>
+            <div class="profile-stat-label">Práctica Libre (${practiceTotal > 0 ? practicePct + '%' : '–'})</div>
           </div>
         </div>
+
+        <nav class="admin-nav-tabs" role="tablist" style="margin-top:1.5rem;margin-bottom:0;">
+          <button type="button" class="admin-nav-tab is-active" data-prof-tab="resultados" role="tab">
+            Mi Dashboard de Resultados
+          </button>
+          <button type="button" class="admin-nav-tab" data-prof-tab="cuenta" role="tab">
+            Editar Datos y Contraseña
+          </button>
+        </nav>
       </article>
 
-      <!-- Tarjeta 2: Cambio de Contraseña -->
-      <article class="profile-card">
-        <header style="margin-bottom:1.2rem;">
-          <h3 style="font-size:1.2rem;color:var(--unach-navy);font-weight:800;margin-bottom:0.25rem;">
-            Seguridad de la cuenta
+      <!-- PESTAÑA 1: DASHBOARD PERSONAL DE RESULTADOS -->
+      <div id="prof-pane-resultados" style="display:flex;flex-direction:column;gap:1.5rem;">
+        <section class="admin-charts-grid" style="margin-bottom:0;">
+          ${pieAccuracyHtml}
+          ${pieSectionsHtml}
+        </section>
+
+        <article class="profile-card">
+          <h3 style="font-size:1.15rem;color:var(--unach-navy);font-weight:800;margin:0 0 0.85rem;">
+            Avance por sección académica
           </h3>
-          <p style="font-size:0.88rem;color:var(--muted);margin:0;">
-            Actualiza tu contraseña periódicamente para proteger tu historial académico.
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Sección</th>
+                  <th>Intentos</th>
+                  <th>Aciertos / Total</th>
+                  <th>Dominio promedio</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>${sectionRowsHtml}</tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="profile-card">
+          <h3 style="font-size:1.15rem;color:var(--unach-navy);font-weight:800;margin:0 0 0.3rem;">
+            Dominio por tema y ley practicada
+          </h3>
+          <p style="font-size:0.84rem;color:var(--muted);margin:0 0 0.9rem;">
+            Ordenado empezando por los temas donde puedes mejorar tu calificación.
           </p>
-        </header>
+          ${lawsTableHtml}
+        </article>
 
-        <form id="profile-pwd-form" class="auth-form" novalidate style="max-width:500px;">
-          <div class="auth-field">
-            <label for="prof-curr-pwd">Contraseña actual</label>
-            <div class="auth-input-wrapper">
-              <input type="password" id="prof-curr-pwd" name="currentPassword" required autocomplete="current-password" placeholder="Tu contraseña actual">
-              <button type="button" class="auth-pwd-toggle" id="prof-curr-toggle">Ver</button>
+        <article class="profile-card">
+          <h3 style="font-size:1.15rem;color:var(--unach-navy);font-weight:800;margin:0 0 0.85rem;">
+            Historial reciente de cuestionarios
+          </h3>
+          ${recentQuizHtml}
+        </article>
+
+        <article class="profile-card">
+          <h3 style="font-size:1.15rem;color:var(--unach-navy);font-weight:800;margin:0 0 0.85rem;">
+            Historial reciente en Práctica Libre
+          </h3>
+          ${recentPracticeHtml}
+        </article>
+      </div>
+
+      <!-- PESTAÑA 2: DATOS PERSONALES Y CAMBIO DE CONTRASEÑA -->
+      <div id="prof-pane-cuenta" style="display:none;flex-direction:column;gap:1.5rem;">
+        <article class="profile-card">
+          <header style="margin-bottom:1.2rem;">
+            <h3 style="font-size:1.2rem;color:var(--unach-navy);font-weight:800;margin-bottom:0.25rem;">
+              Mis datos académicos
+            </h3>
+            <p style="font-size:0.88rem;color:var(--muted);margin:0;">
+              Mantén actualizado tu nombre completo, grado y grupo para que tu profesor identifique tu progreso.
+            </p>
+          </header>
+
+          <form id="profile-info-form" class="auth-form" novalidate style="max-width:520px;">
+            <div class="auth-field">
+              <label for="prof-edit-name">Nombre completo</label>
+              <input type="text" id="prof-edit-name" required minlength="2" maxlength="120"
+                value="${escapeAttr(user.fullName || user.full_name || '')}" placeholder="Tu nombre y apellidos">
             </div>
-          </div>
 
-          <div class="auth-field">
-            <label for="prof-new-pwd">Nueva contraseña</label>
-            <div class="auth-input-wrapper">
-              <input type="password" id="prof-new-pwd" name="newPassword" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
-              <button type="button" class="auth-pwd-toggle" id="prof-new-toggle">Ver</button>
+            <div class="auth-row-2">
+              <div class="auth-field">
+                <label for="prof-edit-grado">Grado</label>
+                <input type="text" id="prof-edit-grado" maxlength="20"
+                  value="${escapeAttr(grado)}" placeholder="Ej. 3°">
+              </div>
+              <div class="auth-field">
+                <label for="prof-edit-grupo">Grupo</label>
+                <input type="text" id="prof-edit-grupo" maxlength="20"
+                  value="${escapeAttr(grupo)}" placeholder="Ej. A">
+              </div>
             </div>
-          </div>
 
-          <div class="auth-field">
-            <label for="prof-conf-pwd">Confirmar nueva contraseña</label>
-            <input type="password" id="prof-conf-pwd" name="confirmPassword" required minlength="8" autocomplete="new-password" placeholder="Repite tu nueva contraseña">
-          </div>
+            <div id="prof-info-msg" class="auth-msg" role="status"></div>
 
-          <div id="prof-pwd-msg" class="auth-msg" role="status"></div>
+            <div>
+              <button id="prof-info-submit" class="btn btn-primary" type="submit">
+                Guardar mis datos
+              </button>
+            </div>
+          </form>
+        </article>
 
-          <div>
-            <button id="prof-pwd-submit" class="btn btn-primary" type="submit">
-              Guardar nueva contraseña
+        <article class="profile-card">
+          <header style="margin-bottom:1.2rem;">
+            <h3 style="font-size:1.2rem;color:var(--unach-navy);font-weight:800;margin-bottom:0.25rem;">
+              Cambiar contraseña
+            </h3>
+            <p style="font-size:0.88rem;color:var(--muted);margin:0;">
+              Ingresa tu contraseña actual para definir una nueva clave de acceso.
+            </p>
+          </header>
+
+          <form id="profile-pwd-form" class="auth-form" novalidate style="max-width:520px;">
+            <div class="auth-field">
+              <label for="prof-curr-pwd">Contraseña actual</label>
+              <div class="auth-input-wrapper">
+                <input type="password" id="prof-curr-pwd" name="currentPassword" required autocomplete="current-password" placeholder="Tu contraseña actual">
+                <button type="button" class="auth-pwd-toggle" id="prof-curr-toggle">Ver</button>
+              </div>
+            </div>
+
+            <div class="auth-field">
+              <label for="prof-new-pwd">Nueva contraseña</label>
+              <div class="auth-input-wrapper">
+                <input type="password" id="prof-new-pwd" name="newPassword" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                <button type="button" class="auth-pwd-toggle" id="prof-new-toggle">Ver</button>
+              </div>
+            </div>
+
+            <div class="auth-field">
+              <label for="prof-conf-pwd">Confirmar nueva contraseña</label>
+              <input type="password" id="prof-conf-pwd" name="confirmPassword" required minlength="8" autocomplete="new-password" placeholder="Repite tu nueva contraseña">
+            </div>
+
+            <div id="prof-pwd-msg" class="auth-msg" role="status"></div>
+
+            <div>
+              <button id="prof-pwd-submit" class="btn btn-primary" type="submit">
+                Guardar nueva contraseña
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article class="profile-card" style="border-left:4px solid var(--wrong);">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+            <div>
+              <h4 style="color:var(--ink);font-weight:700;margin-bottom:0.25rem;">Cerrar sesión</h4>
+              <p style="color:var(--muted);font-size:0.86rem;margin:0;">
+                Finaliza tu sesión activa en este dispositivo para salvaguardar tu cuenta.
+              </p>
+            </div>
+            <button id="profile-logout-btn" class="btn btn-soft" style="color:var(--wrong);border-color:#fca5a5;font-weight:700;" type="button">
+              Cerrar sesión
             </button>
           </div>
-        </form>
-      </article>
-
-      <!-- Tarjeta 3: Cierre de Sesión y Acciones -->
-      <article class="profile-card" style="border-left:4px solid var(--wrong);">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
-          <div>
-            <h4 style="color:var(--ink);font-weight:700;margin-bottom:0.25rem;">Cerrar sesión</h4>
-            <p style="color:var(--muted);font-size:0.86rem;margin:0;">
-              Finaliza tu sesión activa en este dispositivo para salvaguardar tu cuenta.
-            </p>
-          </div>
-          <button id="profile-logout-btn" class="btn btn-soft" style="color:var(--wrong);border-color:#fca5a5;font-weight:700;" type="button">
-            Cerrar sesión
-          </button>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
   `;
+
+  // Navegación entre las 2 pestañas del perfil
+  const profTabBtns = view.querySelectorAll('[data-prof-tab]');
+  const paneResultados = view.querySelector('#prof-pane-resultados');
+  const paneCuenta = view.querySelector('#prof-pane-cuenta');
+
+  profTabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-prof-tab');
+      profTabBtns.forEach((b) => b.classList.toggle('is-active', b === btn));
+      if (paneResultados) paneResultados.style.display = target === 'resultados' ? 'flex' : 'none';
+      if (paneCuenta) paneCuenta.style.display = target === 'cuenta' ? 'flex' : 'none';
+    });
+  });
+
+  // Formulario de actualización de Nombre, Grado y Grupo
+  const infoForm = view.querySelector('#profile-info-form');
+  const editNameIn = view.querySelector('#prof-edit-name');
+  const editGradoIn = view.querySelector('#prof-edit-grado');
+  const editGrupoIn = view.querySelector('#prof-edit-grupo');
+  const infoMsg = view.querySelector('#prof-info-msg');
+  const infoSubmit = view.querySelector('#prof-info-submit');
+
+  infoForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newName = editNameIn.value.trim();
+    const newGrado = editGradoIn.value.trim();
+    const newGrupo = editGrupoIn.value.trim();
+
+    if (!newName || newName.length < 2) {
+      infoMsg.textContent = 'Ingresa tu nombre completo (mínimo 2 caracteres).';
+      infoMsg.className = 'auth-msg auth-err';
+      editNameIn.focus();
+      return;
+    }
+
+    infoSubmit.disabled = true;
+    infoMsg.textContent = 'Guardando cambios…';
+    infoMsg.className = 'auth-msg';
+
+    try {
+      const res = await updateOwnProfile({
+        fullName: newName,
+        grado: newGrado || null,
+        grupo: newGrupo || null,
+      });
+
+      if (!res.ok && res.error) {
+        infoMsg.textContent = res.error.message || 'No se pudieron actualizar tus datos.';
+        infoMsg.className = 'auth-msg auth-err';
+        infoSubmit.disabled = false;
+        return;
+      }
+
+      if (session?.user && res.user) {
+        session.user = res.user;
+      }
+      updateUserBar(res.user || user, window.__isAdmin);
+
+      const heroName = view.querySelector('#prof-hero-name');
+      const heroAvatar = view.querySelector('#prof-hero-avatar');
+      const heroGroup = view.querySelector('#prof-hero-group');
+      if (heroName) heroName.textContent = newName;
+      if (heroAvatar) heroAvatar.textContent = newName.charAt(0).toUpperCase();
+      if (heroGroup) {
+        const label = [newGrado, newGrupo].filter(Boolean).join(' ') || 'Sin asignar';
+        heroGroup.textContent = `Grado/Grupo: ${label}`;
+      }
+
+      infoMsg.textContent = '✓ Tus datos académicos se actualizaron correctamente.';
+      infoMsg.className = 'auth-msg auth-ok';
+      infoSubmit.disabled = false;
+    } catch (err) {
+      infoMsg.textContent = err.message || 'Error inesperado al guardar tus datos.';
+      infoMsg.className = 'auth-msg auth-err';
+      infoSubmit.disabled = false;
+    }
+  });
 
   // Toggle visualización para contraseñas en perfil
   const currPwdIn = view.querySelector('#prof-curr-pwd');

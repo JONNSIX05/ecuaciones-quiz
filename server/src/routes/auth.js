@@ -11,7 +11,8 @@ import {
   logAudit,
 } from '../security.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { loginLimiter, registerLimiter } from '../middleware/rate-limiter.js';
+import { loginLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rate-limiter.js';
+import { sendPasswordResetEmail } from '../mailer.js';
 
 export const authRouter = Router();
 
@@ -263,7 +264,7 @@ const forgotPasswordSchema = z.object({
 /**
  * POST /auth/forgot-password
  */
-authRouter.post('/forgot-password', async (req, res, next) => {
+authRouter.post('/forgot-password', passwordResetLimiter, async (req, res, next) => {
   const parsed = forgotPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -278,27 +279,38 @@ authRouter.post('/forgot-password', async (req, res, next) => {
     const userRes = await query(`SELECT id, email, full_name FROM eqd.users WHERE email = $1`, [email]);
     const user = userRes.rows[0];
 
-    let resetToken = null;
     if (user) {
-      resetToken = generateToken();
+      const resetToken = generateToken();
       const tokenHash = hashToken(resetToken);
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
 
+      await query(
+        `UPDATE eqd.password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL`,
+        [user.id]
+      );
+
+      await query(
+        `INSERT INTO eqd.password_resets (user_id, token_hash, expires_at, ip)
+         VALUES ($1, $2, $3, $4)`,
+        [user.id, tokenHash, expiresAt, ip]
+      );
+
+      let emailSent = false;
       try {
-        await query(
-          `INSERT INTO eqd.password_resets (user_id, token_hash, expires_at, ip)
-           VALUES ($1, $2, $3, $4)`,
-          [user.id, tokenHash, expiresAt, ip]
-        );
-      } catch (dbErr) {
-        // En caso de que la tabla aún no esté creada en la BD actual
-        console.warn('[PASSWORD RESET] Aviso al insertar en password_resets:', dbErr.message);
+        const mailRes = await sendPasswordResetEmail({
+          to: user.email,
+          fullName: user.full_name,
+          token: resetToken,
+        });
+        emailSent = Boolean(mailRes?.sent);
+      } catch (mailErr) {
+        console.error('[PASSWORD RESET] Error enviando correo SMTP:', mailErr.message);
       }
 
       await logAudit({
         userId: user.id,
         action: 'password_reset_requested',
-        detail: { email: user.email },
+        detail: { email: user.email, emailSent },
         ip,
       });
     } else {
@@ -307,8 +319,7 @@ authRouter.post('/forgot-password', async (req, res, next) => {
 
     return res.json({
       ok: true,
-      message: 'Si el correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña en breve.',
-      token: resetToken,
+      message: 'Si el correo electrónico está registrado, te hemos enviado un código y un enlace de recuperación (válido por 30 minutos).',
     });
   } catch (err) {
     next(err);
@@ -316,14 +327,14 @@ authRouter.post('/forgot-password', async (req, res, next) => {
 });
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(10),
+  token: z.string().trim().min(10),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.').max(72),
 });
 
 /**
  * POST /auth/reset-password
  */
-authRouter.post('/reset-password', async (req, res, next) => {
+authRouter.post('/reset-password', passwordResetLimiter, async (req, res, next) => {
   const parsed = resetPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -428,4 +439,65 @@ authRouter.post('/change-password', authenticateToken, async (req, res, next) =>
     next(err);
   }
 });
+
+const updateOwnProfileSchema = z.object({
+  fullName: z.string().trim().min(2, 'El nombre completo debe tener al menos 2 caracteres.').max(120),
+  grado: z.string().trim().max(20).optional().nullable(),
+  grupo: z.string().trim().max(20).optional().nullable(),
+});
+
+/**
+ * PATCH /auth/profile (Usuario autenticado actualiza su propio nombre, grado y grupo)
+ */
+authRouter.patch('/profile', authenticateToken, async (req, res, next) => {
+  const parsed = updateOwnProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: issue?.message || 'Datos de perfil inválidos.' }
+    });
+  }
+
+  const { fullName, grado, grupo } = parsed.data;
+  const cleanGrado = grado && grado.trim() ? grado.trim() : null;
+  const cleanGrupo = grupo && grupo.trim() ? grupo.trim() : null;
+
+  try {
+    const { rows } = await query(
+      `UPDATE eqd.users
+       SET full_name = $1, grado = $2, grupo = $3
+       WHERE id = $4
+       RETURNING id, email, full_name, grado, grupo, is_admin`,
+      [fullName, cleanGrado, cleanGrupo, req.user.id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'Usuario no encontrado.' } });
+    }
+
+    const u = rows[0];
+    await logAudit({
+      userId: req.user.id,
+      action: 'user_updated_own_profile',
+      detail: { fullName, grado: cleanGrado, grupo: cleanGrupo },
+      ip: req.ip,
+    });
+
+    return res.json({
+      ok: true,
+      user: {
+        id: u.id,
+        email: u.email,
+        fullName: u.full_name || '',
+        full_name: u.full_name || '',
+        grado: u.grado || null,
+        grupo: u.grupo || null,
+        isAdmin: Boolean(u.is_admin),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 

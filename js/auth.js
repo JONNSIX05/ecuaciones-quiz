@@ -2,7 +2,7 @@
 // Funciones de autenticación y sesión mediante la API REST del VPS.
 // Mantiene retrocompatibilidad de firmas con el frontend existente.
 
-import { api, getToken, setToken, removeToken } from './api.js?v=8';
+import { api, getToken, setToken, removeToken } from './api.js?v=11';
 
 let _cachedUser = null;
 let _userFetchPromise = null;
@@ -208,26 +208,17 @@ export async function hasAcceptedCurrentTerms() {
 /**
  * Solicita el restablecimiento de contraseña para un correo.
  * @param {string} email
- * @returns {Promise<{ok:boolean, message?:string, token?:string, error?:Error|null}>}
+ * @returns {Promise<{ok:boolean, message?:string, error?:Error|null}>}
  */
 export async function requestPasswordReset(email) {
   try {
     const data = await api.post('/auth/forgot-password', { email });
     return {
       ok: true,
-      message: data?.message || 'Si el correo está registrado, recibirás un enlace de recuperación.',
-      token: data?.token,
+      message: data?.message || 'Si el correo está registrado, recibirás un código y enlace de recuperación.',
       error: null,
     };
   } catch (err) {
-    if (err.code === 'TIMEOUT' || err.status === 404) {
-      return {
-        ok: true,
-        message: 'Si el correo está registrado, se han generado las instrucciones de recuperación.',
-        token: 'TOKEN-DEMO-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
-        error: null,
-      };
-    }
     return { ok: false, error: err };
   }
 }
@@ -247,13 +238,6 @@ export async function resetPassword(token, password) {
       error: null,
     };
   } catch (err) {
-    if (err.code === 'TIMEOUT' || err.status === 404) {
-      return {
-        ok: true,
-        message: 'Contraseña restablecida con éxito (modo demostración).',
-        error: null,
-      };
-    }
     return { ok: false, error: err };
   }
 }
@@ -273,13 +257,27 @@ export async function changePassword(currentPassword, newPassword) {
       error: null,
     };
   } catch (err) {
-    if (err.code === 'TIMEOUT' || err.status === 404) {
-      return {
-        ok: true,
-        message: 'Contraseña actualizada con éxito.',
-        error: null,
-      };
+    return { ok: false, error: err };
+  }
+}
+
+/**
+ * Permite al usuario autenticado actualizar su propio nombre, grado y grupo.
+ * @param {{fullName:string, grado?:string|null, grupo?:string|null}} payload
+ * @returns {Promise<{ok:boolean, user?:object, error?:Error|null}>}
+ */
+export async function updateOwnProfile(payload) {
+  try {
+    const data = await api.patch('/auth/profile', payload);
+    if (data?.user) {
+      _cachedUser = data.user;
     }
+    return {
+      ok: true,
+      user: data?.user || null,
+      error: null,
+    };
+  } catch (err) {
     return { ok: false, error: err };
   }
 }

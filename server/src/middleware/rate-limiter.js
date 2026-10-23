@@ -37,3 +37,12 @@ export const apiLimiter = makeRateLimiter({
   max: 300,
   message: 'Demasiadas solicitudes enviadas al servidor.',
 });
+
+// 4. Limite estricto para recuperación y restablecimiento de contraseña
+export const passwordResetLimiter = makeRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5,
+  message: 'Demasiadas solicitudes de recuperación de contraseña. Intenta nuevamente en 15 minutos.',
+  code: 'PASSWORD_RESET_RATE_LIMIT',
+});
+

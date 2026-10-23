@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query, withTransaction } from '../db.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
-import { escapeLike, logAudit } from '../security.js';
+import { escapeLike, hashPassword, logAudit } from '../security.js';
 
 export const adminRouter = Router();
 
@@ -105,11 +105,12 @@ const profileSchema = z.object({
   fullName: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres.').max(120),
   grado: z.string().trim().max(20).optional().nullable(),
   grupo: z.string().trim().max(20).optional().nullable(),
+  newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres.').max(72).optional().nullable(),
 });
 
 /**
  * PATCH /admin/users/:id/profile
- * Permite a un administrador actualizar el nombre completo, grado y grupo de un usuario.
+ * Permite a un administrador actualizar el nombre completo, grado, grupo y opcionalmente la contraseña de un usuario.
  */
 adminRouter.patch('/users/:id/profile', async (req, res, next) => {
   const targetId = String(req.params.id || '').trim();
@@ -127,18 +128,33 @@ adminRouter.patch('/users/:id/profile', async (req, res, next) => {
     });
   }
 
-  const { fullName, grado, grupo } = parsed.data;
+  const { fullName, grado, grupo, newPassword } = parsed.data;
   const cleanGrado = grado && grado.trim() ? grado.trim() : null;
   const cleanGrupo = grupo && grupo.trim() ? grupo.trim() : null;
+  const cleanNewPwd = newPassword && newPassword.trim() ? newPassword : null;
 
   try {
-    const { rows } = await query(
-      `UPDATE eqd.users
-       SET full_name = $1, grado = $2, grupo = $3
-       WHERE id = $4
-       RETURNING id AS user_id, email, full_name, grado, grupo, is_admin, created_at`,
-      [fullName, cleanGrado, cleanGrupo, targetId]
-    );
+    let rows;
+    if (cleanNewPwd) {
+      const pwdHash = await hashPassword(cleanNewPwd);
+      const resDb = await query(
+        `UPDATE eqd.users
+         SET full_name = $1, grado = $2, grupo = $3, password_hash = $4, failed_logins = 0, locked_until = NULL
+         WHERE id = $5
+         RETURNING id AS user_id, email, full_name, grado, grupo, is_admin, created_at`,
+        [fullName, cleanGrado, cleanGrupo, pwdHash, targetId]
+      );
+      rows = resDb.rows;
+    } else {
+      const resDb = await query(
+        `UPDATE eqd.users
+         SET full_name = $1, grado = $2, grupo = $3
+         WHERE id = $4
+         RETURNING id AS user_id, email, full_name, grado, grupo, is_admin, created_at`,
+        [fullName, cleanGrado, cleanGrupo, targetId]
+      );
+      rows = resDb.rows;
+    }
 
     if (!rows.length) {
       return res.status(404).json({
@@ -155,6 +171,7 @@ adminRouter.patch('/users/:id/profile', async (req, res, next) => {
         fullName,
         grado: cleanGrado,
         grupo: cleanGrupo,
+        passwordResetByAdmin: Boolean(cleanNewPwd),
       },
       ip: req.ip,
     });

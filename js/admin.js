@@ -4,8 +4,8 @@
 // - Directorio completo de Usuarios y Estudiantes con asignación/revocación del rol de Profesor
 // - Desglose de rendimiento por sección, subtema/ley y Práctica Libre.
 
-import { api } from './api.js?v=10';
-import { isAdmin, getUser, signOut } from './auth.js?v=10';
+import { api } from './api.js?v=11';
+import { isAdmin, getUser, signOut } from './auth.js?v=11';
 import { openModal, closeActiveModal } from './modal.js';
 
 function escapeHtml(str) {
@@ -779,6 +779,11 @@ function renderDashboardContent(
                 value="${escapeAttr(u.grupo || '')}" placeholder="Ej. A">
             </div>
           </div>
+          <div class="auth-field" style="margin-top:.35rem;padding-top:.75rem;border-top:1px dashed var(--line);">
+            <label for="edit-user-pwd">Restablecer contraseña del usuario</label>
+            <input type="text" id="edit-user-pwd" minlength="8" maxlength="72" autocomplete="off"
+              placeholder="Dejar vacío para conservar la contraseña actual (mín. 8 caracteres)">
+          </div>
           <div id="edit-user-msg" class="auth-msg" role="status"></div>
           <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.75rem;">
             <button type="button" id="edit-user-cancel" class="btn btn-soft btn-small">Cancelar</button>
@@ -792,6 +797,7 @@ function renderDashboardContent(
     const nameIn = bodyEl.querySelector('#edit-user-name');
     const gradoIn = bodyEl.querySelector('#edit-user-grado');
     const grupoIn = bodyEl.querySelector('#edit-user-grupo');
+    const pwdIn = bodyEl.querySelector('#edit-user-pwd');
     const msgEl = bodyEl.querySelector('#edit-user-msg');
     const saveBtn = bodyEl.querySelector('#edit-user-save');
 
@@ -804,11 +810,19 @@ function renderDashboardContent(
       const fullName = nameIn.value.trim();
       const grado = gradoIn.value.trim();
       const grupo = grupoIn.value.trim();
+      const newPassword = pwdIn.value.trim();
 
       if (!fullName || fullName.length < 2) {
         msgEl.textContent = 'Ingresa un nombre válido (mínimo 2 caracteres).';
         msgEl.className = 'auth-msg auth-err';
         nameIn.focus();
+        return;
+      }
+
+      if (newPassword && newPassword.length < 8) {
+        msgEl.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+        msgEl.className = 'auth-msg auth-err';
+        pwdIn.focus();
         return;
       }
 
@@ -819,6 +833,7 @@ function renderDashboardContent(
           fullName,
           grado: grado || null,
           grupo: grupo || null,
+          newPassword: newPassword || null,
         });
 
         u.rawName = fullName;
@@ -836,7 +851,9 @@ function renderDashboardContent(
 
         closeActiveModal();
         if (feedbackEl) {
-          feedbackEl.textContent = `✓ Datos actualizados para ${fullName} (${u.email}).`;
+          feedbackEl.textContent = newPassword
+            ? `✓ Datos y contraseña actualizados para ${fullName} (${u.email}).`
+            : `✓ Datos actualizados para ${fullName} (${u.email}).`;
           feedbackEl.className = 'auth-msg auth-ok';
         }
         refreshUsersTable();
