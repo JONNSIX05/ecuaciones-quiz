@@ -34,6 +34,59 @@ adminRouter.get('/dashboard', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /admin/users/:id/details
+ * Retorna el perfil detallado de un usuario junto con el historial completo
+ * de sus intentos de cuestionarios y de práctica libre.
+ */
+adminRouter.get('/users/:id/details', async (req, res, next) => {
+  const targetId = String(req.params.id || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_USER_ID', message: 'Identificador de usuario inválido.' }
+    });
+  }
+
+  try {
+    const [userRes, quizRes, practiceRes] = await Promise.all([
+      query(
+        `SELECT id AS user_id, email, full_name, grado, grupo, is_admin, created_at, last_login_at
+         FROM eqd.users
+         WHERE id = $1`,
+        [targetId]
+      ),
+      query(
+        `SELECT id, user_id, section_id, subtema_id, law_id, law_name, difficulty, score, total, created_at
+         FROM eqd.quiz_attempts
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
+        [targetId]
+      ),
+      query(
+        `SELECT id, user_id, input, topic, correct, created_at
+         FROM eqd.practice_attempts
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
+        [targetId]
+      ),
+    ]);
+
+    if (!userRes.rows.length) {
+      return res.status(404).json({
+        error: { code: 'USER_NOT_FOUND', message: 'Estudiante o usuario no encontrado.' }
+      });
+    }
+
+    return res.json({
+      profile: userRes.rows[0],
+      quizAttempts: quizRes.rows,
+      practiceAttempts: practiceRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const roleSchema = z.object({
   isAdmin: z.boolean(),
 });

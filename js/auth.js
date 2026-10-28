@@ -2,7 +2,7 @@
 // Funciones de autenticación y sesión mediante la API REST del VPS.
 // Mantiene retrocompatibilidad de firmas con el frontend existente.
 
-import { api, getToken, setToken, removeToken } from './api.js?v=11';
+import { api, getToken, setToken, removeToken } from './api.js?v=12';
 
 let _cachedUser = null;
 let _userFetchPromise = null;

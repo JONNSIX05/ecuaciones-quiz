@@ -4,8 +4,8 @@
 // - Directorio completo de Usuarios y Estudiantes con asignación/revocación del rol de Profesor
 // - Desglose de rendimiento por sección, subtema/ley y Práctica Libre.
 
-import { api } from './api.js?v=11';
-import { isAdmin, getUser, signOut } from './auth.js?v=11';
+import { api } from './api.js?v=12';
+import { isAdmin, getUser, signOut } from './auth.js?v=12';
 import { openModal, closeActiveModal } from './modal.js';
 
 function escapeHtml(str) {
@@ -48,6 +48,34 @@ function sectionLabel(id) {
       'practica-libre': 'Práctica Libre',
     }[id] || id
   );
+}
+
+function formatDifficultyBadge(diff) {
+  const raw = String(diff || 'balanced').trim();
+  const norm = raw.toLowerCase();
+  if (norm === 'easy' || norm.includes('fácil') || norm.includes('facil')) {
+    return `<span class="pill pill-ok">Fácil</span>`;
+  }
+  if (norm === 'medium' || norm.includes('medio')) {
+    return `<span class="pill pill-warn">Medio</span>`;
+  }
+  if (norm === 'hard' || norm.includes('difícil') || norm.includes('dificil')) {
+    return `<span class="pill pill-danger">Difícil</span>`;
+  }
+  if (norm === 'custom' || norm.includes('personalizado')) {
+    return `<span class="pill pill-student">Personalizado</span>`;
+  }
+  return `<span class="pill pill-student">Equilibrado</span>`;
+}
+
+function formatDifficultyText(diff) {
+  const raw = String(diff || 'balanced').trim();
+  const norm = raw.toLowerCase();
+  if (norm === 'easy' || norm.includes('fácil') || norm.includes('facil')) return 'Fácil';
+  if (norm === 'medium' || norm.includes('medio')) return 'Medio';
+  if (norm === 'hard' || norm.includes('difícil') || norm.includes('dificil')) return 'Difícil';
+  if (norm === 'custom' || norm.includes('personalizado')) return 'Personalizado';
+  return 'Equilibrado';
 }
 
 /**
@@ -425,18 +453,20 @@ function renderDashboardContent(
     recentAttempts.length === 0
       ? '<p class="admin-empty">Sin intentos de quiz registrados aún.</p>'
       : renderTable(
-          ['Estudiante', 'Correo', 'Sección', 'Ley / Subtema', 'Puntaje', 'Desempeño', 'Fecha'],
+          ['Estudiante', 'Correo', 'Sección', 'Ley / Subtema', 'Dificultad', 'Puntaje', 'Desempeño', 'Fecha', 'Acción'],
           recentAttempts.map((a) => {
             const profile = profileMap.get(a.user_id);
             const pct = a.total ? Math.round((a.score / a.total) * 100) : 0;
             return [
-              `<strong>${escapeHtml(profile?.full_name || 'Estudiante')}</strong>`,
+              `<button type="button" class="admin-user-link js-view-student-profile" data-user-id="${escapeAttr(a.user_id)}">${escapeHtml(profile?.full_name || 'Estudiante')}</button>`,
               escapeHtml(profile?.email || '(sin correo)'),
               escapeHtml(sectionLabel(a.section_id || '')),
               escapeHtml(a.law_name || a.law_id || ''),
+              formatDifficultyBadge(a.difficulty),
               `<strong>${a.score}/${a.total}</strong>`,
               renderProgressBar(pct),
               fmtDate(a.created_at),
+              `<button type="button" class="btn btn-soft btn-small js-view-student-profile" data-user-id="${escapeAttr(a.user_id)}">Ver perfil</button>`,
             ];
           })
         );
@@ -595,6 +625,9 @@ function renderDashboardContent(
             )}
       </section>
     </div>
+
+    <!-- VISTA DETALLADA DE PERFIL E INTENTOS DE ESTUDIANTE (INSPECCIÓN DOCENTE) -->
+    <div id="tab-pane-student-detail" class="admin-tab-pane" style="display:none;"></div>
   `;
 
   // Activar pestaña solicitada
@@ -603,9 +636,15 @@ function renderDashboardContent(
     resumen: view.querySelector('#tab-pane-resumen'),
     alumnos: view.querySelector('#tab-pane-alumnos'),
     temas: view.querySelector('#tab-pane-temas'),
+    studentDetail: view.querySelector('#tab-pane-student-detail'),
   };
 
+  let lastMainTab = initialTab;
+
   function activateTab(target) {
+    if (target !== 'studentDetail') {
+      lastMainTab = target;
+    }
     tabButtons.forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-tab') === target));
     Object.entries(panes).forEach(([k, pane]) => {
       if (pane) pane.style.display = k === target ? 'block' : 'none';
@@ -752,9 +791,423 @@ function renderDashboardContent(
         openEditUserModal(found, feedbackEl);
       });
     });
+
+    view.querySelectorAll('.js-view-student-profile').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-user-id');
+        if (!targetId) return;
+        openStudentProfileView(targetId);
+      });
+    });
   }
 
-  function openEditUserModal(u, feedbackEl) {
+  async function openStudentProfileView(targetUserId) {
+    const detailPane = panes.studentDetail;
+    if (!detailPane) return;
+
+    activateTab('studentDetail');
+    detailPane.innerHTML = `<p class="admin-loading">Cargando perfil detallado e historial de intentos del estudiante…</p>`;
+
+    const baseUser = allUsers.find((u) => u.userId === targetUserId);
+    let profileRow = profiles.find((p) => p.user_id === targetUserId) || null;
+    let userQuizAttempts = quizAttempts.filter((a) => a.user_id === targetUserId);
+    let userPracticeAttempts = practiceAttempts.filter((p) => p.user_id === targetUserId);
+
+    try {
+      const detailRes = await api.get(`/admin/users/${encodeURIComponent(targetUserId)}/details`);
+      if (detailRes?.profile) profileRow = detailRes.profile;
+      if (Array.isArray(detailRes?.quizAttempts)) userQuizAttempts = detailRes.quizAttempts;
+      if (Array.isArray(detailRes?.practiceAttempts)) userPracticeAttempts = detailRes.practiceAttempts;
+    } catch (_) {
+      // Usa los datos ya presentes en memoria del dashboard si el endpoint aún no está activo
+    }
+
+    const fullName = (profileRow?.full_name || baseUser?.name || 'Estudiante').trim();
+    const email = profileRow?.email || baseUser?.email || '(sin correo)';
+    const grado = (profileRow?.grado ?? baseUser?.grado ?? '').trim();
+    const grupo = (profileRow?.grupo ?? baseUser?.grupo ?? '').trim();
+    const gradoGrupo = [grado, grupo].filter(Boolean).join(' ') || 'Sin asignar';
+    const isProf = Boolean(profileRow?.is_admin ?? baseUser?.isAdmin);
+    const createdAt = profileRow?.created_at || baseUser?.createdAt || null;
+    const lastLoginAt = profileRow?.last_login_at || baseUser?.lastLoginAt || null;
+    const initial = (fullName.charAt(0) || email.charAt(0) || 'E').toUpperCase();
+
+    const attemptsCount = userQuizAttempts.length;
+    const totalScore = userQuizAttempts.reduce((acc, a) => acc + (Number(a.score) || 0), 0);
+    const totalQuestions = userQuizAttempts.reduce((acc, a) => acc + (Number(a.total) || 0), 0);
+    const accuracyPct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
+    const pracTotal = userPracticeAttempts.length;
+    const pracCorrect = userPracticeAttempts.filter((p) => p.correct).length;
+    const pracPct = pracTotal > 0 ? Math.round((pracCorrect / pracTotal) * 100) : 0;
+
+    let statusPill = '<span class="pill pill-ok">Regular</span>';
+    if (isProf) {
+      statusPill = '<span class="pill pill-admin">Docente</span>';
+    } else if (attemptsCount === 0) {
+      statusPill = '<span class="pill pill-warn">Sin intentos</span>';
+    } else if (accuracyPct < AT_RISK_PCT) {
+      statusPill = '<span class="pill pill-danger">Bajo promedio (&lt;60%)</span>';
+    } else if (baseUser?.inactive) {
+      statusPill = '<span class="pill pill-warn">Inactivo (&gt;14 días)</span>';
+    }
+
+    // Agregación por sección
+    const secAgg = {
+      algebra: { attempts: 0, correct: 0, total: 0 },
+      'calculo-diferencial': { attempts: 0, correct: 0, total: 0 },
+      'calculo-integral': { attempts: 0, correct: 0, total: 0 },
+    };
+    for (const a of userQuizAttempts) {
+      const sId = a.section_id || 'algebra';
+      if (!secAgg[sId]) secAgg[sId] = { attempts: 0, correct: 0, total: 0 };
+      secAgg[sId].attempts += 1;
+      secAgg[sId].correct += Number(a.score) || 0;
+      secAgg[sId].total += Number(a.total) || 0;
+    }
+
+    // Agregación por ley/subtema
+    const byLaw = new Map();
+    for (const a of userQuizAttempts) {
+      const key = `${a.section_id || ''}::${a.law_id || ''}`;
+      const cur = byLaw.get(key) || {
+        sectionId: a.section_id || '',
+        subtemaId: a.subtema_id || '',
+        lawId: a.law_id || '',
+        lawName: a.law_name || a.law_id || 'Tema',
+        attempts: 0,
+        correct: 0,
+        total: 0,
+        bestPct: 0,
+        worstPct: 100,
+        lastAt: a.created_at,
+      };
+      cur.attempts += 1;
+      cur.correct += Number(a.score) || 0;
+      cur.total += Number(a.total) || 0;
+      const pct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
+      if (pct > cur.bestPct) cur.bestPct = pct;
+      if (pct < cur.worstPct) cur.worstPct = pct;
+      if (!cur.lastAt || new Date(a.created_at) > new Date(cur.lastAt)) {
+        cur.lastAt = a.created_at;
+      }
+      byLaw.set(key, cur);
+    }
+    const lawList = [...byLaw.values()].sort((a, b) => {
+      const avgA = a.total ? a.correct / a.total : 0;
+      const avgB = b.total ? b.correct / b.total : 0;
+      return avgA - avgB;
+    });
+
+    // Gráficas SVG individuales del estudiante
+    const totalRightAll = totalScore + pracCorrect;
+    const totalAskedAll = totalQuestions + pracTotal;
+    const totalWrongAll = Math.max(0, totalAskedAll - totalRightAll);
+    const overallStudentPct = totalAskedAll > 0 ? Math.round((totalRightAll / totalAskedAll) * 100) : 0;
+
+    const studentPieAccuracy = renderPieChartCard({
+      title: 'Efectividad del Estudiante',
+      subtitle: 'Proporción de aciertos y errores en cuestionarios y práctica',
+      centerValue: totalAskedAll > 0 ? `${overallStudentPct}%` : '–',
+      centerSub: `${totalAskedAll} reactivos`,
+      slices: [
+        { label: 'Aciertos en Quiz', value: totalScore, color: '#16a34a' },
+        { label: 'Aciertos en Práctica', value: pracCorrect, color: '#0d9488' },
+        { label: 'Errores por reforzar', value: totalWrongAll, color: '#dc2626' },
+      ],
+    });
+
+    const totalSessions = attemptsCount + pracTotal;
+    const studentPieSections = renderPieChartCard({
+      title: 'Distribución de Estudio',
+      subtitle: 'Cuestionarios y prácticas realizados por sección',
+      centerValue: String(totalSessions),
+      centerSub: totalSessions === 1 ? 'actividad' : 'actividades',
+      slices: [
+        { label: 'Álgebra', value: secAgg.algebra.attempts, color: '#132652' },
+        { label: 'Cálculo Diferencial', value: secAgg['calculo-diferencial'].attempts, color: '#0071db' },
+        { label: 'Cálculo Integral', value: secAgg['calculo-integral'].attempts, color: '#c59b27' },
+        { label: 'Práctica Libre', value: pracTotal, color: '#0d9488' },
+      ],
+    });
+
+    const secTableHtml = renderTable(
+      ['Sección', 'Intentos', 'Aciertos / Total', 'Dominio promedio'],
+      Object.entries(secAgg).map(([secId, v]) => {
+        const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+        return [
+          `<strong>${escapeHtml(sectionLabel(secId))}</strong>`,
+          v.attempts,
+          `${v.correct} / ${v.total}`,
+          v.total > 0 ? renderProgressBar(pct) : '<span style="color:var(--muted);">Sin intentos aún</span>',
+        ];
+      })
+    );
+
+    const lawsBreakdownHtml =
+      lawList.length === 0
+        ? '<p class="admin-empty">Este estudiante aún no ha completado cuestionarios en ningún tema.</p>'
+        : renderTable(
+            ['Sección', 'Subtema / Ley', 'Intentos', 'Aciertos / Total', 'Mejor Nota', 'Peor Nota', 'Dominio Promedio', 'Último Intento'],
+            lawList.map((item) => {
+              const avg = item.total > 0 ? Math.round((item.correct / item.total) * 100) : 0;
+              return [
+                escapeHtml(sectionLabel(item.sectionId)),
+                `<strong>${escapeHtml(item.lawName)}</strong>`,
+                item.attempts,
+                `${item.correct}/${item.total}`,
+                `<strong>${item.bestPct}%</strong>`,
+                `${item.worstPct}%`,
+                renderProgressBar(avg),
+                fmtDate(item.lastAt),
+              ];
+            })
+          );
+
+    function renderAttemptRows(list) {
+      if (list.length === 0) {
+        return '<p class="admin-empty">No se encontraron intentos de cuestionario con ese filtro.</p>';
+      }
+      return renderTable(
+        ['#', 'Fecha y Hora', 'Sección', 'Subtema', 'Ley / Tema', 'Dificultad', 'Puntaje', 'Desempeño'],
+        list.map((a, idx) => {
+          const pct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
+          return [
+            `<span style="color:var(--muted);font-family:var(--font-mono);">${list.length - idx}</span>`,
+            fmtDate(a.created_at),
+            escapeHtml(sectionLabel(a.section_id || '')),
+            escapeHtml(a.subtema_id || '—'),
+            `<strong>${escapeHtml(a.law_name || a.law_id || '')}</strong>`,
+            formatDifficultyBadge(a.difficulty),
+            `<strong>${a.score}/${a.total}</strong>`,
+            renderProgressBar(pct),
+          ];
+        })
+      );
+    }
+
+    const practiceTableHtml =
+      userPracticeAttempts.length === 0
+        ? '<p class="admin-empty">Este estudiante no tiene registros en Práctica Libre.</p>'
+        : renderTable(
+            ['#', 'Fecha y Hora', 'Expresión Analizada', 'Método / Fórmula Detectada', 'Resultado'],
+            userPracticeAttempts.map((p, idx) => [
+              `<span style="color:var(--muted);font-family:var(--font-mono);">${userPracticeAttempts.length - idx}</span>`,
+              fmtDate(p.created_at),
+              `<code>${escapeHtml(p.input)}</code>`,
+              `<strong>${escapeHtml(p.topic || 'General')}</strong>`,
+              p.correct ? '<span class="pill pill-ok">Correcto</span>' : '<span class="pill pill-danger">Incorrecto</span>',
+            ])
+          );
+
+    detailPane.innerHTML = `
+      <div class="admin-student-detail-topbar">
+        <button type="button" id="admin-back-to-users" class="btn btn-soft btn-small">
+          ← Volver al listado
+        </button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button type="button" id="admin-detail-edit-user" class="btn btn-soft btn-small">
+            Editar datos / contraseña
+          </button>
+          <button type="button" id="admin-detail-export-csv" class="btn btn-gold btn-small">
+            Exportar intentos del alumno (CSV)
+          </button>
+        </div>
+      </div>
+
+      <article class="profile-card" style="margin-bottom:1.5rem;">
+        <div class="profile-hero">
+          <div class="profile-avatar">${escapeHtml(initial)}</div>
+          <div class="profile-details">
+            <span class="auth-badge" style="margin-bottom:.25rem;">Expediente Académico Individual</span>
+            <h2>${escapeHtml(fullName)}</h2>
+            <div class="profile-email">${escapeHtml(email)}</div>
+            <div class="profile-meta-badges">
+              <span class="badge">Grado/Grupo: ${escapeHtml(gradoGrupo)}</span>
+              ${statusPill}
+              <span class="badge">Registro: ${fmtDate(createdAt)}</span>
+              <span class="badge">Último acceso: ${fmtDate(lastLoginAt || baseUser?.lastAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-stats-grid">
+          <div class="profile-stat-box">
+            <div class="profile-stat-value">${attemptsCount}</div>
+            <div class="profile-stat-label">Cuestionarios resueltos</div>
+          </div>
+          <div class="profile-stat-box">
+            <div class="profile-stat-value">${totalScore} / ${totalQuestions}</div>
+            <div class="profile-stat-label">Reactivos acertados</div>
+          </div>
+          <div class="profile-stat-box">
+            <div class="profile-stat-value" style="color:${accuracyPct >= 60 ? 'var(--correct)' : 'var(--wrong)'};">
+              ${totalQuestions > 0 ? accuracyPct + '%' : '–'}
+            </div>
+            <div class="profile-stat-label">Promedio en cuestionarios</div>
+          </div>
+          <div class="profile-stat-box">
+            <div class="profile-stat-value">${pracCorrect} / ${pracTotal}</div>
+            <div class="profile-stat-label">Práctica Libre (${pracTotal > 0 ? pracPct + '%' : '–'})</div>
+          </div>
+        </div>
+      </article>
+
+      <section class="admin-charts-grid">
+        ${studentPieAccuracy}
+        ${studentPieSections}
+      </section>
+
+      <section class="admin-section">
+        <h3>Avance por sección académica</h3>
+        ${secTableHtml}
+      </section>
+
+      <section class="admin-section">
+        <h3>Desglose de dominio por subtema y ley</h3>
+        ${lawsBreakdownHtml}
+      </section>
+
+      <section class="admin-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+          <h3 style="margin:0;">Historial detallado de intentos en cuestionarios (${userQuizAttempts.length})</h3>
+          <span id="admin-detail-quiz-count" style="font-size:0.84rem;color:var(--muted);font-weight:600;">
+            Mostrando ${userQuizAttempts.length} ${userQuizAttempts.length === 1 ? 'intento' : 'intentos'}
+          </span>
+        </div>
+
+        <div class="admin-users-toolbar" style="margin-bottom:0.85rem;">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            <select id="admin-detail-sec-filter" class="admin-search-input" style="min-width:175px;" aria-label="Filtrar intentos por sección">
+              <option value="">Todas las secciones</option>
+              <option value="algebra">Álgebra</option>
+              <option value="calculo-diferencial">Cálculo Diferencial</option>
+              <option value="calculo-integral">Cálculo Integral</option>
+            </select>
+            <select id="admin-detail-diff-filter" class="admin-search-input" style="min-width:165px;" aria-label="Filtrar intentos por dificultad">
+              <option value="">Todas las dificultades</option>
+              <option value="easy">Fácil</option>
+              <option value="medium">Medio</option>
+              <option value="hard">Difícil</option>
+              <option value="balanced">Equilibrado</option>
+              <option value="custom">Personalizado</option>
+            </select>
+            <input type="search" id="admin-detail-law-search" class="admin-search-input" placeholder="Buscar por tema, subtema o ley…">
+          </div>
+        </div>
+
+        <div id="admin-detail-attempts-wrap">
+          ${renderAttemptRows(userQuizAttempts)}
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Historial detallado de Práctica Libre (${userPracticeAttempts.length})</h3>
+        ${practiceTableHtml}
+      </section>
+    `;
+
+    detailPane.querySelector('#admin-back-to-users')?.addEventListener('click', () => {
+      activateTab(lastMainTab || 'alumnos');
+    });
+
+    detailPane.querySelector('#admin-detail-edit-user')?.addEventListener('click', () => {
+      const targetObj = baseUser || {
+        userId: targetUserId,
+        email,
+        name: fullName,
+        rawName: fullName,
+        grado,
+        grupo,
+      };
+      openEditUserModal(targetObj, view.querySelector('#admin-role-feedback'), () => {
+        openStudentProfileView(targetUserId);
+      });
+    });
+
+    const secFilterEl = detailPane.querySelector('#admin-detail-sec-filter');
+    const diffFilterEl = detailPane.querySelector('#admin-detail-diff-filter');
+    const lawSearchEl = detailPane.querySelector('#admin-detail-law-search');
+    const attemptsWrapEl = detailPane.querySelector('#admin-detail-attempts-wrap');
+    const countLabelEl = detailPane.querySelector('#admin-detail-quiz-count');
+
+    function matchAttemptDifficulty(rawDiff, filterVal) {
+      if (!filterVal) return true;
+      const norm = String(rawDiff || 'balanced').toLowerCase();
+      if (filterVal === 'easy') return norm === 'easy' || norm.includes('fácil') || norm.includes('facil');
+      if (filterVal === 'medium') return norm === 'medium' || norm.includes('medio');
+      if (filterVal === 'hard') return norm === 'hard' || norm.includes('difícil') || norm.includes('dificil');
+      if (filterVal === 'custom') return norm === 'custom' || norm.includes('personalizado');
+      if (filterVal === 'balanced') return norm === 'balanced' || norm.includes('equilibrado');
+      return true;
+    }
+
+    function getFilteredStudentAttempts() {
+      const sVal = secFilterEl?.value || '';
+      const dVal = diffFilterEl?.value || '';
+      const q = (lawSearchEl?.value || '').toLowerCase().trim();
+      return userQuizAttempts.filter((a) => {
+        if (sVal && a.section_id !== sVal) return false;
+        if (!matchAttemptDifficulty(a.difficulty, dVal)) return false;
+        if (q) {
+          const hay = `${a.law_name || ''} ${a.law_id || ''} ${a.subtema_id || ''}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function applyDetailFilters() {
+      const filtered = getFilteredStudentAttempts();
+      if (attemptsWrapEl) {
+        attemptsWrapEl.innerHTML = renderAttemptRows(filtered);
+      }
+      if (countLabelEl) {
+        countLabelEl.textContent = `Mostrando ${filtered.length} de ${userQuizAttempts.length} ${userQuizAttempts.length === 1 ? 'intento' : 'intentos'}`;
+      }
+    }
+
+    secFilterEl?.addEventListener('change', applyDetailFilters);
+    diffFilterEl?.addEventListener('change', applyDetailFilters);
+    lawSearchEl?.addEventListener('input', applyDetailFilters);
+
+    detailPane.querySelector('#admin-detail-export-csv')?.addEventListener('click', () => {
+      const filtered = getFilteredStudentAttempts();
+      const header = ['Num_Intento', 'Alumno', 'Correo', 'Grado_Grupo', 'Fecha', 'Seccion', 'Subtema', 'Ley_Tema', 'Dificultad', 'Aciertos', 'Total_Reactivos', 'Porcentaje'];
+      const csvLines = [
+        header.join(','),
+        ...filtered.map((a, idx) => {
+          const pct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
+          return [
+            filtered.length - idx,
+            `"${String(fullName).replace(/"/g, '""')}"`,
+            `"${String(email).replace(/"/g, '""')}"`,
+            `"${String(gradoGrupo).replace(/"/g, '""')}"`,
+            `"${a.created_at || ''}"`,
+            `"${sectionLabel(a.section_id || '')}"`,
+            `"${String(a.subtema_id || '').replace(/"/g, '""')}"`,
+            `"${String(a.law_name || a.law_id || '').replace(/"/g, '""')}"`,
+            `"${formatDifficultyText(a.difficulty)}"`,
+            a.score,
+            a.total,
+            pct,
+          ].join(',');
+        }),
+      ];
+      const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const safeSlug = email.split('@')[0].replace(/[^a-z0-9-_]/gi, '_') || 'estudiante';
+      link.download = `intentos-${safeSlug}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  function openEditUserModal(u, feedbackEl, onSaved) {
     const bodyEl = openModal({
       title: `Editar datos de usuario`,
       contentHTML: `
@@ -857,6 +1310,7 @@ function renderDashboardContent(
           feedbackEl.className = 'auth-msg auth-ok';
         }
         refreshUsersTable();
+        if (typeof onSaved === 'function') onSaved();
       } catch (err) {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Guardar cambios';
@@ -894,6 +1348,10 @@ function renderUsersDirectoryTable(userList, currentUser) {
         statusBadge = '<span class="pill pill-warn">Inactivo</span>';
       }
 
+      const viewProfileBtnHtml = `
+        <button type="button" class="btn btn-primary btn-small js-view-student-profile"
+          data-user-id="${escapeAttr(u.userId)}">Ver perfil e intentos</button>`;
+
       const editBtnHtml = `
         <button type="button" class="btn btn-soft btn-small js-edit-user"
           data-user-id="${escapeAttr(u.userId)}">Editar datos</button>`;
@@ -919,7 +1377,9 @@ function renderUsersDirectoryTable(userList, currentUser) {
 
       return [
         `<div class="user-cell-info">
-          <strong>${escapeHtml(u.name)}</strong>
+          <button type="button" class="admin-user-link js-view-student-profile" data-user-id="${escapeAttr(u.userId)}">
+            ${escapeHtml(u.name)}
+          </button>
           <small>${escapeHtml(u.email)}</small>
         </div>`,
         `<span style="font-family:var(--font-mono);font-weight:600;color:var(--unach-navy);">${escapeHtml(u.gradoGrupoLabel)}</span>`,
@@ -931,7 +1391,7 @@ function renderUsersDirectoryTable(userList, currentUser) {
           <small>Registro: ${fmtDate(u.createdAt)}</small>
         </div>`,
         statusBadge,
-        `<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">${editBtnHtml}${roleBtnHtml}</div>`,
+        `<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">${viewProfileBtnHtml}${editBtnHtml}${roleBtnHtml}</div>`,
       ];
     })
   );

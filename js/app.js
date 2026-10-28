@@ -14,7 +14,7 @@ import { openModal, closeActiveModal, isModalOpen } from './modal.js';
 import { renderPracticaLibre } from './practica-libre.js';
 import { formulario } from '../data/calculo-diferencial/formulario.js';
 import { formulario as formularioIntegral } from '../data/calculo-integral/formulario.js';
-import { api, isApiConfigured } from './api.js?v=11';
+import { api, isApiConfigured } from './api.js?v=12';
 import {
   getSession,
   getUser,
@@ -29,17 +29,18 @@ import {
   resetPassword,
   changePassword,
   updateOwnProfile,
-} from './auth.js?v=11';
-import { TERMS_DEFAULT, termsToHtml } from './terms.js?v=11';
-import { saveAttempt } from './results.js?v=11';
-import { renderAdminDashboard } from './admin.js?v=11';
-import { renderAdminQuestions } from './admin-questions.js?v=11';
-import { getLaw as getLawRemote } from './questions.js?v=11';
+} from './auth.js?v=12';
+import { TERMS_DEFAULT, termsToHtml } from './terms.js?v=12';
+import { saveAttempt } from './results.js?v=12';
+import { renderAdminDashboard } from './admin.js?v=12';
+import { renderAdminQuestions } from './admin-questions.js?v=12';
+import { getLaw as getLawRemote } from './questions.js?v=12';
 
 const view = document.getElementById('view');
 
-// Estado de la sesión activa (se pierde al recargar).
-let session = null;
+// Estado de autenticación del usuario y estado de la partida activa del cuestionario.
+let authSession = null;
+let quizSession = null;
 
 /* -------------------------------------------------------------
    Utilidades de escape
@@ -133,7 +134,8 @@ function updateUserBar(user, isUserAdmin) {
     await signOut();
     window.__currentEmail = null;
     window.__isAdmin = false;
-    session = null;
+    authSession = null;
+    quizSession = null;
     updateUserBar(null, false);
     window.location.hash = '#/';
     route();
@@ -149,16 +151,16 @@ async function route() {
 
   // Verificacion de sesion en API
   if (isApiConfigured()) {
-    if (!session) {
-      session = await getSession();
-      if (session) {
-        window.__currentEmail = session.user?.email || '';
+    if (!authSession || !authSession.user) {
+      authSession = await getSession();
+      if (authSession) {
+        window.__currentEmail = authSession.user?.email || '';
         window.__isAdmin = await isAdmin();
       }
     }
 
     // Usuario no autenticado: el Login es la página principal
-    if (!session) {
+    if (!authSession || !authSession.user) {
       updateUserBar(null, false);
       if (seg[0] === 'registro') {
         renderRegister();
@@ -172,6 +174,9 @@ async function route() {
       renderLogin();
       return;
     }
+
+    // Siempre mantener la barra superior sincronizada con el usuario autenticado
+    updateUserBar(authSession.user, window.__isAdmin);
 
     // Usuario autenticado que navega a login o registro es llevado al menú
     if (seg[0] === 'login' || seg[0] === 'registro') {
@@ -188,8 +193,9 @@ async function route() {
       renderStudentProfile();
       return;
     }
-
-    updateUserBar(session.user, window.__isAdmin);
+  } else if (seg[0] === 'perfil') {
+    renderStudentProfile();
+    return;
   }
 
   // Rutas del profesor
@@ -337,9 +343,17 @@ function renderMenu() {
 
   view.innerHTML = `
     <div class="menu-hero">
-      <span class="auth-badge">Plataforma de Estudio</span>
-      <h2>Módulos de Preparación Matemática</h2>
-      <p class="menu-sub">Repasa conceptos teóricos, formularios integrales y resuelve cuestionarios interactivos de opción múltiple.</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <span class="auth-badge">Plataforma de Estudio</span>
+          <h2>Módulos de Preparación Matemática</h2>
+          <p class="menu-sub">Repasa conceptos teóricos, formularios integrales y resuelve cuestionarios interactivos de opción múltiple.</p>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <a class="btn btn-primary btn-small" href="#/perfil">Ver mi perfil y calificaciones</a>
+          ${window.__isAdmin ? '<a class="btn btn-gold btn-small" href="#/admin">Panel Docente</a>' : ''}
+        </div>
+      </div>
     </div>
     <div class="section-grid">${cards}</div>`;
 }
@@ -654,7 +668,7 @@ function renderConfig(section, law, sub) {
 
     const hintsToggle = view.querySelector('#hints-toggle');
 
-    session = {
+    quizSession = {
       section,
       law,
       sub,
@@ -752,18 +766,18 @@ function openFormularioModal(section) {
    Vista: quiz (juego)
    ------------------------------------------------------------- */
 function renderQuiz(section, law, sub) {
-  if (!session || session.law.lawId !== law.lawId) {
+  if (!quizSession || quizSession.law.lawId !== law.lawId) {
     window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}`;
     return;
   }
 
-  const total = session.questions.length;
-  const q = session.questions[session.index];
-  const idx = session.index + 1;
-  session.answered = false;
+  const total = quizSession.questions.length;
+  const q = quizSession.questions[quizSession.index];
+  const idx = quizSession.index + 1;
+  quizSession.answered = false;
 
   const showHints =
-    Boolean(session.withHints) && isHintsSection(section);
+    Boolean(quizSession.withHints) && isHintsSection(section);
 
   const optionsHtml = q.options
     .map((opt, i) => {
@@ -783,7 +797,7 @@ function renderQuiz(section, law, sub) {
     <div class="quiz-topbar">
       <a class="back-link" href="#/${section.id}/${sub.id}/${law.lawId}">← Salir</a>
       ${showHints ? '<button id="hints-btn" class="btn btn-soft btn-small" type="button">Formulario</button>' : ''}
-      <span class="meta">Pregunta ${idx} de ${total} · Aciertos: ${session.score}</span>
+      <span class="meta">Pregunta ${idx} de ${total} · Aciertos: ${quizSession.score}</span>
     </div>
     <div class="progress-track">
       <div class="progress-fill" style="width: ${((idx - 1) / total) * 100}%"></div>
@@ -810,8 +824,8 @@ function renderQuiz(section, law, sub) {
 
   buttons.forEach((btn) => {
     btn.addEventListener('click', () => {
-      if (session.answered) return;
-      session.answered = true;
+      if (quizSession.answered) return;
+      quizSession.answered = true;
 
       const chosen = Number(btn.dataset.idx);
       const isCorrect = chosen === correctIdx;
@@ -820,7 +834,7 @@ function renderQuiz(section, law, sub) {
 
       if (isCorrect) {
         btn.classList.add('is-correct');
-        session.score += 1;
+        quizSession.score += 1;
       } else {
         btn.classList.add('is-wrong');
         buttons[correctIdx].classList.add('is-correct');
@@ -828,10 +842,10 @@ function renderQuiz(section, law, sub) {
 
       const meta = view.querySelector('.quiz-topbar .meta');
       if (meta) {
-        meta.textContent = `Pregunta ${idx} de ${total} · Aciertos: ${session.score}`;
+        meta.textContent = `Pregunta ${idx} de ${total} · Aciertos: ${quizSession.score}`;
       }
 
-      session.answers.push({ question: q, chosen });
+      quizSession.answers.push({ question: q, chosen });
 
       const slot = view.querySelector('#feedback-slot');
       slot.innerHTML = `
@@ -847,11 +861,11 @@ function renderQuiz(section, law, sub) {
   });
 
   nextBtn.addEventListener('click', () => {
-    if (session.index + 1 >= total) {
-      session.finished = true;
+    if (quizSession.index + 1 >= total) {
+      quizSession.finished = true;
       window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}/result`;
     } else {
-      session.index += 1;
+      quizSession.index += 1;
       renderQuiz(section, law, sub);
     }
   });
@@ -861,13 +875,13 @@ function renderQuiz(section, law, sub) {
    Vista: resultados
    ------------------------------------------------------------- */
 function renderResult(section, law, sub) {
-  if (!session || !session.finished || session.law.lawId !== law.lawId) {
+  if (!quizSession || !quizSession.finished || quizSession.law.lawId !== law.lawId) {
     window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}`;
     return;
   }
 
-  const { score, answers } = session;
-  const total = session.questions.length;
+  const { score, answers } = quizSession;
+  const total = quizSession.questions.length;
   const level = meterLevel(score, total);
 
   // Persistencia en la API (con fallback a localStorage) — fire-and-forget.
@@ -878,7 +892,7 @@ function renderResult(section, law, sub) {
     lawName: law.lawName,
     score,
     total,
-    difficulty: session.difficultyLabel,
+    difficulty: quizSession.difficultyLabel,
   }).catch(() => {});
 
   const reviewItems = answers
@@ -917,14 +931,14 @@ function renderResult(section, law, sub) {
   hydrate(view);
 
   view.querySelector('#retry-btn').addEventListener('click', () => {
-    const distribution = session.distribution || {
+    const distribution = quizSession.distribution || {
       easy: 0,
       medium: 0,
       hard: 0,
     };
     const questions = selectQuestions(law, distribution);
     if (!questions.length) return;
-    session = {
+    quizSession = {
       section,
       law,
       sub,
@@ -934,8 +948,8 @@ function renderResult(section, law, sub) {
       score: 0,
       answers: [],
       answered: false,
-      difficultyLabel: session.difficultyLabel,
-      withHints: session.withHints,
+      difficultyLabel: quizSession.difficultyLabel,
+      withHints: quizSession.withHints,
     };
     window.location.hash = `#/${section.id}/${sub.id}/${law.lawId}/play`;
   });
@@ -958,7 +972,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (isModalOpen()) return;
-  if (!session || session.finished || session.answered) return;
+  if (!quizSession || quizSession.finished || quizSession.answered) return;
   const num = parseInt(e.key, 10);
   if (num >= 1 && num <= 4) {
     const btn = view.querySelector(`.option-btn[data-key="${num}"]`);
@@ -1063,7 +1077,7 @@ function renderLogin() {
 
       msgEl.textContent = 'Sesión iniciada. Redirigiendo…';
       msgEl.className = 'auth-msg auth-ok';
-      session = await getSession();
+      authSession = await getSession();
       window.__currentEmail = user?.email || email;
       window.__isAdmin = await isAdmin();
       updateUserBar(user, window.__isAdmin);
@@ -1226,7 +1240,7 @@ function renderRegister() {
       }
       msgEl.textContent = 'Cuenta creada exitosamente. Redirigiendo…';
       msgEl.className = 'auth-msg auth-ok';
-      session = await getSession();
+      authSession = await getSession();
       window.__currentEmail = user?.email || email;
       window.__isAdmin = false;
       updateUserBar(user, false);
@@ -1566,8 +1580,26 @@ function sectionNameById(secId) {
   );
 }
 
+function formatDifficultyBadge(diff) {
+  const raw = String(diff || 'balanced').trim();
+  const norm = raw.toLowerCase();
+  if (norm === 'easy' || norm.includes('fácil') || norm.includes('facil')) {
+    return `<span class="pill pill-ok">Fácil</span>`;
+  }
+  if (norm === 'medium' || norm.includes('medio')) {
+    return `<span class="pill pill-warn">Medio</span>`;
+  }
+  if (norm === 'hard' || norm.includes('difícil') || norm.includes('dificil')) {
+    return `<span class="pill pill-danger">Difícil</span>`;
+  }
+  if (norm === 'custom' || norm.includes('personalizado')) {
+    return `<span class="pill pill-student">Personalizado</span>`;
+  }
+  return `<span class="pill pill-student">Equilibrado</span>`;
+}
+
 async function renderStudentProfile() {
-  const user = session?.user || (await getUser());
+  const user = authSession?.user || (await getUser());
   if (!user) {
     window.location.hash = '#/';
     route();
@@ -1765,38 +1797,73 @@ async function renderStudentProfile() {
           </table>
         </div>`;
 
+  function renderStudentQuizHistoryRows(list) {
+    if (list.length === 0) {
+      return `<p class="admin-empty">No se encontraron intentos con ese filtro.</p>`;
+    }
+    return `
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Sección</th>
+              <th>Tema / Ley</th>
+              <th>Dificultad</th>
+              <th>Puntaje</th>
+              <th>Desempeño</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list
+              .map((a, idx) => {
+                const pct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
+                return `
+                  <tr>
+                    <td><small style="color:var(--muted);font-family:var(--font-mono);">${list.length - idx}</small></td>
+                    <td>${fmtShortDate(a.created_at)}</td>
+                    <td>${escapeHtml(sectionNameById(a.section_id))}</td>
+                    <td><strong>${escapeHtml(a.law_name || a.law_id)}</strong></td>
+                    <td>${formatDifficultyBadge(a.difficulty)}</td>
+                    <td><strong>${a.score}/${a.total}</strong></td>
+                    <td>${renderStudentProgressBar(pct)}</td>
+                  </tr>`;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
   const recentQuizHtml =
     quizAttempts.length === 0
       ? `<p class="admin-empty">Sin cuestionarios registrados todavía.</p>`
       : `
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Sección</th>
-                <th>Tema / Ley</th>
-                <th>Puntaje</th>
-                <th>Desempeño</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${quizAttempts
-                .slice(0, 15)
-                .map((a) => {
-                  const pct = a.total ? Math.round((Number(a.score) / Number(a.total)) * 100) : 0;
-                  return `
-                    <tr>
-                      <td>${fmtShortDate(a.created_at)}</td>
-                      <td>${escapeHtml(sectionNameById(a.section_id))}</td>
-                      <td><strong>${escapeHtml(a.law_name || a.law_id)}</strong></td>
-                      <td><strong>${a.score}/${a.total}</strong></td>
-                      <td>${renderStudentProgressBar(pct)}</td>
-                    </tr>`;
-                })
-                .join('')}
-            </tbody>
-          </table>
+        <div class="admin-users-toolbar" style="margin-bottom:0.85rem;">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            <select id="stu-quiz-sec-filter" class="admin-search-input" style="min-width:170px;" aria-label="Filtrar por sección">
+              <option value="">Todas las secciones</option>
+              <option value="algebra">Álgebra</option>
+              <option value="calculo-diferencial">Cálculo Diferencial</option>
+              <option value="calculo-integral">Cálculo Integral</option>
+            </select>
+            <select id="stu-quiz-diff-filter" class="admin-search-input" style="min-width:155px;" aria-label="Filtrar por dificultad">
+              <option value="">Todas las dificultades</option>
+              <option value="easy">Fácil</option>
+              <option value="medium">Medio</option>
+              <option value="hard">Difícil</option>
+              <option value="balanced">Equilibrado</option>
+              <option value="custom">Personalizado</option>
+            </select>
+            <input type="search" id="stu-quiz-search" class="admin-search-input" placeholder="Buscar por tema o ley…">
+          </div>
+          <span id="stu-quiz-count" style="font-size:0.82rem;color:var(--muted);font-weight:600;">
+            Mostrando ${quizAttempts.length} ${quizAttempts.length === 1 ? 'intento' : 'intentos'}
+          </span>
+        </div>
+        <div id="stu-quiz-history-wrap">
+          ${renderStudentQuizHistoryRows(quizAttempts)}
         </div>`;
 
   const recentPracticeHtml =
@@ -1807,6 +1874,7 @@ async function renderStudentProfile() {
           <table class="admin-table">
             <thead>
               <tr>
+                <th>#</th>
                 <th>Fecha</th>
                 <th>Expresión analizada</th>
                 <th>Método / Fórmula detectada</th>
@@ -1815,10 +1883,10 @@ async function renderStudentProfile() {
             </thead>
             <tbody>
               ${practiceAttempts
-                .slice(0, 10)
                 .map(
-                  (p) => `
+                  (p, idx) => `
                   <tr>
+                    <td><small style="color:var(--muted);font-family:var(--font-mono);">${practiceAttempts.length - idx}</small></td>
                     <td>${fmtShortDate(p.created_at)}</td>
                     <td><code>${escapeHtml(p.input)}</code></td>
                     <td><strong>${escapeHtml(p.topic || 'General')}</strong></td>
@@ -2055,6 +2123,48 @@ async function renderStudentProfile() {
     });
   });
 
+  // Filtros interactivos del historial de cuestionarios del estudiante
+  const stuSecFilter = view.querySelector('#stu-quiz-sec-filter');
+  const stuDiffFilter = view.querySelector('#stu-quiz-diff-filter');
+  const stuSearchIn = view.querySelector('#stu-quiz-search');
+  const stuHistoryWrap = view.querySelector('#stu-quiz-history-wrap');
+  const stuCountEl = view.querySelector('#stu-quiz-count');
+
+  function matchDiffFilter(rawDiff, filterVal) {
+    if (!filterVal) return true;
+    const norm = String(rawDiff || 'balanced').toLowerCase();
+    if (filterVal === 'easy') return norm === 'easy' || norm.includes('fácil') || norm.includes('facil');
+    if (filterVal === 'medium') return norm === 'medium' || norm.includes('medio');
+    if (filterVal === 'hard') return norm === 'hard' || norm.includes('difícil') || norm.includes('dificil');
+    if (filterVal === 'custom') return norm === 'custom' || norm.includes('personalizado');
+    if (filterVal === 'balanced') return norm === 'balanced' || norm.includes('equilibrado');
+    return true;
+  }
+
+  function applyStudentQuizFilters() {
+    if (!stuHistoryWrap) return;
+    const secVal = stuSecFilter?.value || '';
+    const diffVal = stuDiffFilter?.value || '';
+    const q = (stuSearchIn?.value || '').toLowerCase().trim();
+    const filtered = quizAttempts.filter((a) => {
+      if (secVal && a.section_id !== secVal) return false;
+      if (!matchDiffFilter(a.difficulty, diffVal)) return false;
+      if (q) {
+        const hay = `${a.law_name || ''} ${a.law_id || ''} ${a.subtema_id || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    stuHistoryWrap.innerHTML = renderStudentQuizHistoryRows(filtered);
+    if (stuCountEl) {
+      stuCountEl.textContent = `Mostrando ${filtered.length} de ${quizAttempts.length} ${quizAttempts.length === 1 ? 'intento' : 'intentos'}`;
+    }
+  }
+
+  stuSecFilter?.addEventListener('change', applyStudentQuizFilters);
+  stuDiffFilter?.addEventListener('change', applyStudentQuizFilters);
+  stuSearchIn?.addEventListener('input', applyStudentQuizFilters);
+
   // Formulario de actualización de Nombre, Grado y Grupo
   const infoForm = view.querySelector('#profile-info-form');
   const editNameIn = view.querySelector('#prof-edit-name');
@@ -2094,8 +2204,8 @@ async function renderStudentProfile() {
         return;
       }
 
-      if (session?.user && res.user) {
-        session.user = res.user;
+      if (authSession?.user && res.user) {
+        authSession.user = res.user;
       }
       updateUserBar(res.user || user, window.__isAdmin);
 
@@ -2198,7 +2308,8 @@ async function renderStudentProfile() {
     await signOut();
     window.__currentEmail = null;
     window.__isAdmin = false;
-    session = null;
+    authSession = null;
+    quizSession = null;
     updateUserBar(null, false);
     window.location.hash = '#/';
     route();
@@ -2226,11 +2337,11 @@ async function boot() {
   }
 
   if (isApiConfigured()) {
-    session = await getSession();
-    if (session) {
-      window.__currentEmail = session.user?.email || '';
+    authSession = await getSession();
+    if (authSession) {
+      window.__currentEmail = authSession.user?.email || '';
       window.__isAdmin = await isAdmin();
-      updateUserBar(session.user, window.__isAdmin);
+      updateUserBar(authSession.user, window.__isAdmin);
     } else {
       updateUserBar(null, false);
     }

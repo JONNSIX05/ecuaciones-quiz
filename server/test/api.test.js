@@ -114,3 +114,14 @@ test('Validación de esquema de subida de preguntas JSON', async () => {
   assert.equal(duplicateIdCheck.ok, false, 'Debe rechazar IDs duplicados en el mismo lote');
 });
 
+test('registerLimiter permite registros simultáneos en red escolar (sin bloqueo por IP)', async () => {
+  const { registerLimiter } = await import('../src/middleware/rate-limiter.js');
+  let nextCalls = 0;
+  for (let i = 0; i < 60; i++) {
+    registerLimiter({ ip: '189.200.10.1' }, {}, () => {
+      nextCalls += 1;
+    });
+  }
+  assert.equal(nextCalls, 60, 'Debe permitir 60+ registros desde la misma IP escolar sin bloquear');
+});
+
