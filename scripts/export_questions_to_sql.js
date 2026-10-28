@@ -210,10 +210,10 @@ async function main() {
 
   // Generar scripts individuales y global
   const filesToGenerate = [
-    { name: '01_algebra_questions.sql', questions: bySection['algebra'], title: 'Sección 01 - Álgebra (420 preguntas)' },
-    { name: '02_calculo_diferencial_questions.sql', questions: bySection['calculo-diferencial'], title: 'Sección 02 - Cálculo Diferencial (183 preguntas)' },
-    { name: '03_calculo_integral_questions.sql', questions: bySection['calculo-integral'], title: 'Sección 03 - Cálculo Integral (155 preguntas)' },
-    { name: '00_all_questions.sql', questions: allQuestions, title: 'Catálogo Completo Global (758 preguntas)' }
+    { name: '01_algebra_questions.sql', questions: bySection['algebra'], title: `Sección 01 - Álgebra (${bySection['algebra'].length} preguntas)` },
+    { name: '02_calculo_diferencial_questions.sql', questions: bySection['calculo-diferencial'], title: `Sección 02 - Cálculo Diferencial (${bySection['calculo-diferencial'].length} preguntas)` },
+    { name: '03_calculo_integral_questions.sql', questions: bySection['calculo-integral'], title: `Sección 03 - Cálculo Integral (${bySection['calculo-integral'].length} preguntas)` },
+    { name: '00_all_questions.sql', questions: allQuestions, title: `Catálogo Completo Global (${allQuestions.length} preguntas)` }
   ];
 
   for (const item of filesToGenerate) {
